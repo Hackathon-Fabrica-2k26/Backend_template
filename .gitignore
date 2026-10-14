@@ -1,0 +1,15 @@
+.venv/
+__pypackages__/
+.pdm-python
+.pdm-build/
+__pycache__/
+*.pyc
+.env
+db.sqlite3
+staticfiles/
+.pytest_cache/
+.ruff_cache/
+.coverage
+models.dot
+.superpowers/
+docs/superpowers/

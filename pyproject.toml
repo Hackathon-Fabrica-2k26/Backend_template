@@ -1,0 +1,75 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "API REST com Django e DRF"
+requires-python = ">=3.11"
+dependencies = [
+    "django>=5.2,<6.0",
+    "djangorestframework>=3.16",
+    "djangorestframework-simplejwt>=5.5",
+    "drf-spectacular>=0.28",
+    "django-filter>=25.1",
+    "django-cors-headers>=4.7",
+    "whitenoise>=6.9",
+    "gunicorn>=23.0",
+    "django-unfold>=0.60",
+    "django-simple-history>=3.10",
+    "django-safedelete>=1.4",
+    "celery>=5.5",
+    "redis>=5.0",
+    "dj-database-url>=3.0",
+    "python-dotenv>=1.0",
+    "psycopg2-binary>=2.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-django>=4.8",
+    "pytest-cov>=5.0",
+    "pytest-env>=1.1",
+    "factory-boy>=3.3",
+    "ruff>=0.8",
+    "django-extensions>=4.1",
+    "pydot>=3.0",
+]
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.scripts]
+dev = "python src/manage.py runserver"
+runserver = "python src/manage.py runserver"
+celery = "celery -A src.config worker --loglevel=INFO --concurrency=10 -n worker1.%h --pool=solo --without-gossip"
+beat = "celery -A src.config beat --loglevel=INFO"
+migrate = "python src/manage.py migrate"
+makemigrations = "python src/manage.py makemigrations"
+createsuperuser = "python src/manage.py createsuperuser"
+shell = "python src/manage.py shell"
+startapp = "python src/manage.py startapp {args}"
+loaddata = "python src/manage.py loaddata {args}"
+dumpdata = "python src/manage.py dumpdata {args}"
+model = "python src/manage.py graph_models items accounts --dot -o models.dot"
+test = "pytest {args}"
+test-cov = "pytest --cov=src --cov-report=term-missing {args}"
+check = "ruff check ."
+format = "ruff format ."
+export = "pdm export --prod -f requirements --without-hashes -o requirements.txt"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+DJANGO_SETTINGS_MODULE = "config.settings"
+testpaths = ["tests"]
+env = [
+    "DEBUG=True",
+    "SECRET_KEY=chave-apenas-para-testes",
+    "DATABASE_URL=",
+    "REDIS_URL=",
+]
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["**/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]

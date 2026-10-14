@@ -1,0 +1,8 @@
+{
+  "include": ["src", "tests"],
+  "exclude": ["**/migrations", "**/__pypackages__"],
+  "extraPaths": ["src", "__pypackages__/3.13/lib"],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "standard",
+  "reportMissingModuleSource": "none"
+}

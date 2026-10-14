@@ -1,0 +1,68 @@
+# Backend
+
+API REST com Django + DRF, autenticação JWT, documentação Swagger, tarefas Celery e admin Unfold.
+
+## Requisitos
+- Python 3.11+
+- [PDM](https://pdm-project.org) (`pip install pdm`)
+
+## Instalação
+```bash
+pdm install -G dev
+cp .env.example .env      # obrigatório: define SECRET_KEY e DEBUG=True para desenvolvimento
+pdm run migrate
+pdm run createsuperuser
+pdm run dev               # http://localhost:8000
+```
+
+Sem PDM:
+```bash
+pip install -r requirements.txt
+cp .env.example .env
+python src/manage.py migrate
+python src/manage.py createsuperuser
+python src/manage.py runserver
+```
+
+## Comandos (`pdm run <comando>`)
+| Comando | Ação |
+|---|---|
+| `dev` / `runserver` | servidor de desenvolvimento |
+| `migrate` / `makemigrations` | migrações |
+| `createsuperuser` | cria superusuário |
+| `shell` | shell Django |
+| `startapp <nome>` | novo app |
+| `celery` / `beat` | worker / agendador |
+| `test` / `test-cov` | testes / com cobertura |
+| `check` / `format` | ruff check / ruff format |
+| `loaddata` / `dumpdata` | fixtures |
+| `model` | diagrama de modelos |
+| `export` | atualiza `requirements.txt` |
+
+## Endpoints
+| Rota | Descrição |
+|---|---|
+| `POST /api/auth/register/` | cria usuário |
+| `POST /api/auth/login/` | retorna `access` e `refresh` |
+| `POST /api/auth/refresh/` | renova o `access` |
+| `GET /api/auth/me/` | usuário autenticado |
+| `/api/items/` | CRUD de exemplo (filtro `done`, busca `search`, ordenação `ordering`) |
+| `/api/docs/` | Swagger |
+| `/health/` | health check |
+| `/admin/` | painel administrativo |
+
+Envie o token como `Authorization: Bearer <access>`.
+
+## Variáveis (`.env`)
+| Variável | Padrão | Uso |
+|---|---|---|
+| `SECRET_KEY` | obrigatória | chave do Django; o app não inicia sem ela quando `DEBUG=False` |
+| `DEBUG` | `False` | modo debug (`.env.example` define `True`) |
+| `ALLOWED_HOSTS` | `localhost,127.0.0.1` | hosts permitidos |
+| `CORS_ALLOWED_ORIGINS` | vazio | origens do front-end; vazio com `DEBUG=True` libera todas |
+| `CSRF_TRUSTED_ORIGINS` | vazio | origens HTTPS do admin atrás de proxy |
+| `DATABASE_URL` | vazio (SQLite) | ex.: `postgres://user:senha@host:5432/banco` |
+| `REDIS_URL` | vazio (Celery síncrono) | broker do Celery |
+
+## Deploy
+O `Procfile` define `release`, `web` (gunicorn) e `worker` (Celery). Configure `SECRET_KEY` (antes do primeiro push), `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `DATABASE_URL` e `REDIS_URL` no ambiente.
