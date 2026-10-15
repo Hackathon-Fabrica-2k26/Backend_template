@@ -6,7 +6,7 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 - `src/config/`: settings, urls raiz, celery, wsgi/asgi
 - `src/core/`: `BaseModel`, `DevAuthentication` e utilidades compartilhadas
 - `src/apps/users/`: usuário customizado (`AbstractUser`, login por e-mail, campo `name`, sem `username`); `AUTH_USER_MODEL = "users.User"`
-- `src/apps/<app>/`: um app por domínio (`models`, `serializers`, `views`, `urls`, `tasks`, `admin`)
+- `src/apps/<app>/`: um app por domínio. `models/`, `serializers/`, `views/`, `admin/` e `tasks/` são **pacotes**, com um arquivo por entidade nomeado pelo que ele é (ex.: `models/item.py`, `serializers/item.py`, `views/item.py`); `urls.py` e `apps.py` ficam soltos
 - `tests/`: pytest-django; fixtures em `tests/conftest.py` (`api_client`, `user`, `auth_client`)
 
 ## Comandos
@@ -20,13 +20,14 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 
 ## Convenções
 - Modelos herdam `core.models.BaseModel` (timestamps, histórico e exclusão lógica). Use `Model.all_objects` para ver excluídos.
-- Referencie o usuário com `settings.AUTH_USER_MODEL` (FK) ou `get_user_model()`; novos campos do usuário vão em `apps/users/models.py`.
+- Referencie o usuário com `settings.AUTH_USER_MODEL` (FK) ou `get_user_model()`; novos campos do usuário vão em `apps/users/models/user.py`.
 - `AUTH_DISABLED=True` no `.env` (com `DEBUG=True`) desativa o JWT: requisições sem token viram `dev@example.com`. Para testes automatizados use `auth_client`.
 - Todas as rotas exigem JWT por padrão. Libere uma rota explicitamente com `permission_classes = [AllowAny]`.
 - Filtre querysets pelo usuário dono quando o dado for privado; item de outro usuário deve dar 404.
 - Listas usam paginação de 20, `filterset_fields`, `search_fields` e `ordering_fields`.
 - Rotas ficam em `apps/<app>/urls.py` e são incluídas em `config/urls.py` sob `/api/`.
 - Registre novos apps em `INSTALLED_APPS` (`apps.<nome>`).
+- Não crie `models.py`, `views.py` etc. com várias classes. Um arquivo por entidade dentro do pacote e reexporte no `__init__.py` (com `__all__`); sem o reexport no `__init__.py`, o Django não registra o modelo, o admin nem a task.
 - Admin usa `unfold.admin.ModelAdmin` junto com `SimpleHistoryAdmin`.
 - Configuração vem de variáveis de ambiente (`.env`); nunca coloque segredo no código.
 - Docs da API: `/api/docs/`. Health: `/health/`.
@@ -36,9 +37,9 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 - Cadastro tem limite de 10 requisições/hora (`throttle_scope = "register"`); novos limites vão em `DEFAULT_THROTTLE_RATES`.
 
 ## Adicionar um recurso novo
-1. `pdm run startapp nome`, mover para `src/apps/nome`, ajustar `apps.py`
-2. Modelo herdando `BaseModel`; `pdm run makemigrations nome`
-3. Serializer, ViewSet, `urls.py` com `DefaultRouter`
+1. `pdm run startapp nome`, mover para `src/apps/nome`, ajustar `apps.py`; apagar `models.py`, `views.py`, `admin.py` e criar os pacotes `models/`, `serializers/`, `views/`, `admin/`
+2. `models/<entidade>.py` herdando `BaseModel` + reexport no `models/__init__.py`; `pdm run makemigrations nome`
+3. `serializers/<entidade>.py`, `views/<entidade>.py` (ViewSet), `urls.py` com `DefaultRouter`, todos reexportados nos `__init__.py`
 4. Incluir a rota em `config/urls.py` e o app em `INSTALLED_APPS`
 5. Testes em `tests/test_nome.py` cobrindo 401, dono errado (404) e validação (400)
 6. `pdm run check && pdm run test`

@@ -3,7 +3,7 @@ from safedelete.admin import SafeDeleteAdmin
 from simple_history.admin import SimpleHistoryAdmin
 from unfold.admin import ModelAdmin
 
-from .models import Item
+from ..models import Item
 
 
 class ExcluidosFilter(admin.SimpleListFilter):

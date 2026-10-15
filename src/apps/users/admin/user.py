@@ -5,7 +5,7 @@ from unfold.forms import AdminPasswordChangeForm
 from unfold.forms import UserChangeForm as UnfoldUserChangeForm
 from unfold.forms import UserCreationForm as UnfoldUserCreationForm
 
-from .models import User
+from ..models import User
 
 
 class UserCreationForm(UnfoldUserCreationForm):

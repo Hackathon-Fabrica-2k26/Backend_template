@@ -1,9 +1,9 @@
 from django.db import transaction
 from rest_framework import viewsets
 
-from .models import Item
-from .serializers import ItemSerializer
-from .tasks import enfileirar_notificacao
+from ..models import Item
+from ..serializers import ItemSerializer
+from ..tasks import enfileirar_notificacao
 
 
 class ItemViewSet(viewsets.ModelViewSet):
