@@ -5,6 +5,8 @@ __pypackages__/
 __pycache__/
 *.pyc
 .env
+.env.*
+!.env.example
 db.sqlite3
 staticfiles/
 .pytest_cache/

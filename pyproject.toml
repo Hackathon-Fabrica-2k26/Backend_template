@@ -38,6 +38,8 @@ dev = [
 distribution = false
 
 [tool.pdm.scripts]
+post_install = "git config core.hooksPath .githooks"
+hooks = "git config core.hooksPath .githooks"
 dev = "python src/manage.py runserver"
 runserver = "python src/manage.py runserver"
 redis = "docker compose up -d redis"
