@@ -8,6 +8,7 @@ from django.core.exceptions import ImproperlyConfigured
 def recarregar(monkeypatch, **env):
     import config.settings as cfg
 
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: None)
     for chave in ("DEBUG", "SECRET_KEY", "DATABASE_URL", "REDIS_URL", "CSRF_TRUSTED_ORIGINS"):
         monkeypatch.delenv(chave, raising=False)
     for chave, valor in env.items():
@@ -60,3 +61,22 @@ def test_tempo_de_vida_dos_tokens():
 
     assert settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] == timedelta(days=2)
     assert settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"] == timedelta(days=7)
+
+
+def test_auth_desativada_exige_debug(monkeypatch):
+    with pytest.raises(ImproperlyConfigured):
+        recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False", AUTH_DISABLED="True")
+
+
+def test_auth_desativada_adiciona_usuario_de_desenvolvimento(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="True", AUTH_DISABLED="True")
+    classes = cfg.REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]
+    assert classes[-1] == "core.authentication.DevAuthentication"
+
+
+def test_auth_ativada_por_padrao(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="True")
+    assert (
+        "core.authentication.DevAuthentication"
+        not in cfg.REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]
+    )

@@ -21,10 +21,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "password"]
+        fields = ["id", "email", "name", "password"]
 
     def validate(self, attrs):
-        usuario = User(username=attrs.get("username", ""), email=attrs.get("email", ""))
+        usuario = User(email=attrs.get("email", ""), name=attrs.get("name", ""))
         try:
             validate_password(attrs["password"], usuario)
         except DjangoValidationError as exc:
@@ -38,4 +38,4 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "username", "email", "first_name", "last_name"]
+        fields = ["id", "email", "name"]

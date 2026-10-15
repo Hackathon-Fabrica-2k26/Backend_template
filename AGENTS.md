@@ -4,7 +4,8 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 
 ## Estrutura
 - `src/config/`: settings, urls raiz, celery, wsgi/asgi
-- `src/core/`: `BaseModel` e utilidades compartilhadas
+- `src/core/`: `BaseModel`, `DevAuthentication` e utilidades compartilhadas
+- `src/apps/users/`: usuário customizado (`AbstractUser`, login por e-mail, campo `name`, sem `username`); `AUTH_USER_MODEL = "users.User"`
 - `src/apps/<app>/`: um app por domínio (`models`, `serializers`, `views`, `urls`, `tasks`, `admin`)
 - `tests/`: pytest-django; fixtures em `tests/conftest.py` (`api_client`, `user`, `auth_client`)
 
@@ -19,6 +20,8 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 
 ## Convenções
 - Modelos herdam `core.models.BaseModel` (timestamps, histórico e exclusão lógica). Use `Model.all_objects` para ver excluídos.
+- Referencie o usuário com `settings.AUTH_USER_MODEL` (FK) ou `get_user_model()`; novos campos do usuário vão em `apps/users/models.py`.
+- `AUTH_DISABLED=True` no `.env` (com `DEBUG=True`) desativa o JWT: requisições sem token viram `dev@example.com`. Para testes automatizados use `auth_client`.
 - Todas as rotas exigem JWT por padrão. Libere uma rota explicitamente com `permission_classes = [AllowAny]`.
 - Filtre querysets pelo usuário dono quando o dado for privado; item de outro usuário deve dar 404.
 - Listas usam paginação de 20, `filterset_fields`, `search_fields` e `ordering_fields`.

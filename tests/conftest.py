@@ -18,7 +18,7 @@ def api_client():
 
 @pytest.fixture
 def user(db):
-    return UserFactory(username="ana", email="ana@example.com")
+    return UserFactory(email="ana@example.com", name="Ana")
 
 
 @pytest.fixture

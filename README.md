@@ -1,6 +1,6 @@
 # Backend
 
-API REST com Django + DRF, autenticação JWT, documentação Swagger, tarefas Celery e admin Unfold.
+API REST com Django + DRF, usuário customizado por e-mail, autenticação JWT, documentação Swagger, tarefas Celery e admin Unfold.
 
 ## Requisitos
 - Python 3.11+
@@ -42,8 +42,8 @@ python src/manage.py runserver
 ## Endpoints
 | Rota | Descrição |
 |---|---|
-| `POST /api/auth/register/` | cria usuário |
-| `POST /api/auth/login/` | retorna `access` e `refresh` |
+| `POST /api/auth/register/` | cria usuário (`email`, `name`, `password`) |
+| `POST /api/auth/login/` | `email` + `password`; retorna `access` e `refresh` |
 | `POST /api/auth/refresh/` | renova o `access` |
 | `GET /api/auth/me/` | usuário autenticado |
 | `/api/items/` | CRUD de exemplo (filtro `done`, busca `search`, ordenação `ordering`) |
@@ -53,6 +53,11 @@ python src/manage.py runserver
 
 Envie o token como `Authorization: Bearer <access>`.
 
+### Desativar o JWT em desenvolvimento
+Com `AUTH_DISABLED=True` no `.env` (e `DEBUG=True`), requisições sem token passam a ser o usuário `dev@example.com`, criado automaticamente. Um token válido continua tendo prioridade. Com `DEBUG=False` o app não inicia com essa opção ligada.
+
+Nos testes automatizados, use a fixture `auth_client` (`force_authenticate`).
+
 ## Variáveis (`.env`)
 | Variável | Padrão | Uso |
 |---|---|---|
@@ -61,6 +66,7 @@ Envie o token como `Authorization: Bearer <access>`.
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1` | hosts permitidos |
 | `CORS_ALLOWED_ORIGINS` | vazio | origens do front-end; vazio com `DEBUG=True` libera todas |
 | `CSRF_TRUSTED_ORIGINS` | vazio | origens HTTPS do admin atrás de proxy |
+| `AUTH_DISABLED` | `False` | desativa o JWT em desenvolvimento (exige `DEBUG=True`) |
 | `DATABASE_URL` | vazio (SQLite) | ex.: `postgres://user:senha@host:5432/banco` |
 | `REDIS_URL` | vazio (Celery síncrono) | broker do Celery |
 

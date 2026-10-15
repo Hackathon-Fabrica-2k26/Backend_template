@@ -6,7 +6,7 @@ from core.views import health
 
 urlpatterns = [
     path("health/", health, name="health"),
-    path("api/auth/", include("apps.accounts.urls")),
+    path("api/auth/", include("apps.users.urls")),
     path("api/", include("apps.items.urls")),
     path("admin/", admin.site.urls),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

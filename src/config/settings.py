@@ -16,6 +16,9 @@ def env_list(name, default=""):
 
 
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+AUTH_DISABLED = os.getenv("AUTH_DISABLED", "False").lower() == "true"
+if AUTH_DISABLED and not DEBUG:
+    raise ImproperlyConfigured("AUTH_DISABLED só pode ser usado com DEBUG=True.")
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 if not SECRET_KEY:
     if not DEBUG:
@@ -43,7 +46,7 @@ INSTALLED_APPS = [
     "safedelete",
     *(["django_extensions"] if importlib.util.find_spec("django_extensions") else []),
     "core",
-    "apps.accounts",
+    "apps.users",
     "apps.items",
 ]
 
@@ -105,6 +108,7 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+AUTH_USER_MODEL = "users.User"
 
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
@@ -112,6 +116,7 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        *(["core.authentication.DevAuthentication"] if AUTH_DISABLED else []),
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_FILTER_BACKENDS": [
