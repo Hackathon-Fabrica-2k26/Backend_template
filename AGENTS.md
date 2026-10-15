@@ -16,6 +16,7 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 - `pdm run makemigrations`
 - `pdm run startapp <nome>`: cria app (mova para `src/apps/` e ajuste `name`/`label` em `apps.py`)
 - `pdm run test`, `pdm run check` (ruff), `pdm run format`
+- `pdm run redis` / `pdm run redis-down`: sobe/derruba o Redis (docker compose); depois defina `REDIS_URL=redis://localhost:6379/0` no `.env`
 - `pdm run celery`: worker (roda da raiz, `celery -A src.config`) (sem `REDIS_URL` as tasks rodam síncronas)
 
 ## Convenções

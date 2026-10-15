@@ -40,6 +40,8 @@ distribution = false
 [tool.pdm.scripts]
 dev = "python src/manage.py runserver"
 runserver = "python src/manage.py runserver"
+redis = "docker compose up -d redis"
+redis-down = "docker compose down"
 celery = "celery -A src.config worker --loglevel=INFO --concurrency=10 -n worker1.%h --pool=solo --without-gossip"
 beat = "celery -A src.config beat --loglevel=INFO"
 migrate = "python src/manage.py migrate"

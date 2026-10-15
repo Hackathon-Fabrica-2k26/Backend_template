@@ -32,12 +32,25 @@ python src/manage.py runserver
 | `createsuperuser` | cria superusuário |
 | `shell` | shell Django |
 | `startapp <nome>` | novo app |
+| `redis` / `redis-down` | sobe / derruba o Redis do `docker-compose.yml` |
 | `celery` / `beat` | worker / agendador |
 | `test` / `test-cov` | testes / com cobertura |
 | `check` / `format` | ruff check / ruff format |
 | `loaddata` / `dumpdata` | fixtures |
 | `model` | diagrama de modelos |
 | `export` | atualiza `requirements.txt` |
+
+## Redis e Celery (opcional)
+Sem `REDIS_URL` as tarefas Celery rodam de forma síncrona, e não é preciso Redis. Para rodar com worker de verdade:
+
+```bash
+pdm run redis        # sobe o Redis via docker compose (porta 6379)
+# no .env: REDIS_URL=redis://localhost:6379/0
+pdm run dev          # terminal 1
+pdm run celery       # terminal 2
+```
+
+`pdm run redis-down` derruba o container. Para mudar a porta do host, use `REDIS_PORT` (e ajuste a `REDIS_URL`).
 
 ## Endpoints
 | Rota | Descrição |
@@ -68,7 +81,8 @@ Nos testes automatizados, use a fixture `auth_client` (`force_authenticate`).
 | `CSRF_TRUSTED_ORIGINS` | vazio | origens HTTPS do admin atrás de proxy |
 | `AUTH_DISABLED` | `False` | desativa o JWT em desenvolvimento (exige `DEBUG=True`) |
 | `DATABASE_URL` | vazio (SQLite) | ex.: `postgres://user:senha@host:5432/banco` |
-| `REDIS_URL` | vazio (Celery síncrono) | broker do Celery |
+| `REDIS_URL` | vazio (Celery síncrono) | broker do Celery, ex.: `redis://localhost:6379/0` |
+| `REDIS_PORT` | `6379` | porta do Redis no host (`docker-compose.yml`) |
 
 ## Deploy
 O `Procfile` define `release`, `web` (gunicorn) e `worker` (Celery). Configure `SECRET_KEY` (antes do primeiro push), `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `DATABASE_URL` e `REDIS_URL` no ambiente.
