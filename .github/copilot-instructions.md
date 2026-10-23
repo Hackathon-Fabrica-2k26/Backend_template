@@ -1,3 +1,1 @@
-# Instruções
-
-Siga as instruções e convenções do arquivo [AGENTS.md](../AGENTS.md).
+Siga AGENTS.md e docs/contexto_projeto_ia.md.

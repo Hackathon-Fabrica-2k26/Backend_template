@@ -1,4 +1,5 @@
 # AGENTS.md
+Contexto do produto: docs/contexto_projeto_ia.md.
 
 Backend Django + DRF. Siga estes padrões ao adicionar código.
 
