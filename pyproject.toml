@@ -70,9 +70,11 @@ env = [
     "SECRET_KEY=chave-apenas-para-testes",
     "DATABASE_URL=",
     "REDIS_URL=",
+    "AUTH_DISABLED=False",
 ]
 
 [tool.ruff]
+cache-dir = "/tmp/.ruff_cache"
 line-length = 100
 extend-exclude = ["**/migrations/*"]
 
