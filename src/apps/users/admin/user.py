@@ -41,5 +41,11 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):  # pyright: ignore[reportIncompatibl
         ("Datas", {"fields": ("last_login", "date_joined")}),
     )
     add_fieldsets = (
-        (None, {"classes": ("wide",), "fields": ("email", "name", "password1", "password2")}),
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("matricula", "email", "name", "password1", "password2"),
+            },
+        ),
     )

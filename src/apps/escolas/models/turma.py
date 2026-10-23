@@ -7,7 +7,19 @@ from .escola import Escola
 
 
 class Turma(BaseModel):
+    class TurnoChoices(models.TextChoices):
+        MANHA = "manha", "Manhã"
+        TARDE = "tarde", "Tarde"
+        NOITE = "noite", "Noite"
+        INTEGRAL = "integral", "Integral"
+
     nome = models.CharField(max_length=45)
+    turno = models.CharField(
+        "turno",
+        max_length=10,
+        choices=TurnoChoices.choices,
+        default=TurnoChoices.MANHA,
+    )
     escola = models.ForeignKey(
         Escola,
         on_delete=models.CASCADE,
