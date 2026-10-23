@@ -30,6 +30,7 @@ python src/manage.py runserver
 | `dev` / `runserver` | servidor de desenvolvimento |
 | `migrate` / `makemigrations` | migrações |
 | `createsuperuser` | cria superusuário |
+| `populate` | popula o banco com dados essenciais e mockados (idempotente) |
 | `seed-demo` | cria os dados da apresentação (idempotente) |
 | `shell` | shell Django |
 | `startapp <nome>` | novo app |
@@ -69,6 +70,32 @@ Cria: 1 escola + config, 1 professor, 2 turmas, 6 alunos (com responsável e per
 | Senha | `demo-senha-123` |
 
 São dados de apresentação, claramente fictícios. Troque a `api_key` da `Config` no admin antes de chamar a LLM de verdade.
+
+## População do Banco de Dados (Database Seeding)
+Comando customizado e idempotente para popular o banco de dados com dados essenciais de catálogo e dados mockados realistas para desenvolvimento e testes locais.
+
+```bash
+# Execução padrão via PDM (ou python src/manage.py seed_db)
+pdm run populate
+
+# Execução limpando dados anteriores antes de semear
+python src/manage.py seed_db --clear
+
+# Execução customizando o volume de dados mockados
+python src/manage.py seed_db --count 20
+python src/manage.py seed_db --users 10 --escolas 3 --turmas-por-escola 2 --alunos-por-turma 5
+```
+
+### Credenciais geradas por padrão:
+| Perfil | E-mail | Matrícula | Senha |
+|---|---|---|---|
+| **Superusuário** | `admin@exemplo.com` | `ADMIN0001` | `admin123` |
+| **Professor** | `professor1@exemplo.com` | `PROF0001` | `senha123` |
+
+Variáveis de ambiente opcionais (`.env`):
+- `SEED_ADMIN_EMAIL`: e-mail do superusuário gerado (padrão: `admin@exemplo.com`).
+- `SEED_ADMIN_PASSWORD`: senha do superusuário gerado (padrão: `admin123`).
+- `SEED_USER_PASSWORD`: senha comum atribuída aos professores mockados (padrão: `senha123`).
 
 ## Endpoints
 | Rota | Descrição |

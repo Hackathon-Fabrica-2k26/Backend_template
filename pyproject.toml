@@ -30,6 +30,7 @@ dev = [
     "pytest-cov>=5.0",
     "pytest-env>=1.1",
     "factory-boy>=3.3",
+    "faker>=33.0",
     "ruff>=0.8",
     "django-extensions>=4.1",
     "pydot>=3.0",
@@ -50,6 +51,7 @@ beat = "celery -A src.config beat --loglevel=INFO"
 migrate = "python src/manage.py migrate"
 makemigrations = "python src/manage.py makemigrations"
 createsuperuser = "python src/manage.py createsuperuser"
+populate = "python src/manage.py seed_db"
 seed-demo = "python src/manage.py seed_demo"
 shell = "python src/manage.py shell"
 startapp = "python src/manage.py startapp {args}"
