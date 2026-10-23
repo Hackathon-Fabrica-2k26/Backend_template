@@ -27,6 +27,12 @@ class TurmaViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        turma = serializer.save()
-        if self.request.user.is_authenticated:
-            turma.professores.add(self.request.user)
+        user = self.request.user
+        escola = getattr(user, "escola", None)
+
+        if escola is not None:
+            turma = serializer.save(escola=escola)
+        else:
+            turma = serializer.save()
+
+        turma.professores.add(user)
