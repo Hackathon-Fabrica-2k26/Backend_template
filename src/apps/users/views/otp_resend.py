@@ -1,6 +1,7 @@
 
 from django.core.mail import send_mail
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,6 +13,13 @@ class OTPResendView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = "otp_resend"
 
+    @extend_schema(
+        request=inline_serializer(
+            name="OTPResendRequest",
+            fields={"otp_token": serializers.CharField()},
+        ),
+        responses={204: None},
+    )
     def post(self, request):
         otp_token = request.data.get("otp_token")
 

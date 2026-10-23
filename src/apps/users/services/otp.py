@@ -100,13 +100,12 @@ def resend_otp(otp_token, send_callback):
     # Só atualiza o código se o envio do e-mail funcionar.
     send_callback(user, code)
 
+    now = time.time()
     data["code"] = code
-    data["last_sent_at"] = time.time()
+    data["attempts"] = 0
+    data["created_at"] = now
+    data["last_sent_at"] = now
 
-    remaining = max(
-        1,
-        OTP_TTL - int(time.time() - data["created_at"]),
-    )
-    cache.set(key, data, timeout=remaining)
+    cache.set(key, data, timeout=OTP_TTL)
 
     return True, None

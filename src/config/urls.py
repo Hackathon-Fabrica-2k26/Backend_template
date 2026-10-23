@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import include, path
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -8,6 +10,7 @@ from rest_framework.reverse import reverse
 from core.views import health
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 def api_root(request, format=None):
     return Response(
@@ -23,6 +26,8 @@ def api_root(request, format=None):
             "relatorios": reverse("relatorio-list", request=request, format=format),
             "me": reverse("me", request=request, format=format),
             "login": reverse("login", request=request, format=format),
+            "otp-verify": reverse("otp-verify", request=request, format=format),
+            "otp-resend": reverse("otp-resend", request=request, format=format),
             "register": reverse("register", request=request, format=format),
             "refresh": reverse("refresh", request=request, format=format),
             "docs": reverse("docs", request=request, format=format),

@@ -25,7 +25,7 @@ class User(AbstractUser):
     matricula = models.CharField(max_length=100, unique=True)
 
     USERNAME_FIELD = "matricula"
-    REQUIRED_FIELDS = ["name"]
+    REQUIRED_FIELDS = ["email", "name"]
     EMAIL_FIELD = "email"
 
     objects = UserManager()  # pyright: ignore[reportAssignmentType]
