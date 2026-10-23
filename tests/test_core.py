@@ -13,3 +13,22 @@ def test_schema_documenta_id_como_inteiro(client):
     parametros = schema["paths"]["/api/items/{id}/"]["get"]["parameters"]
     id_param = next(p for p in parametros if p["name"] == "id")
     assert id_param["schema"]["type"] == "integer"
+
+
+def test_api_root_e_items(auth_client):
+    resp = auth_client.get("/api/")
+    assert resp.status_code == 200
+    dados = resp.json()
+    for chave in (
+        "items",
+        "configs",
+        "escolas",
+        "turmas",
+        "me",
+        "login",
+        "register",
+        "refresh",
+        "docs",
+    ):
+        assert chave in dados
+    assert auth_client.get("/api/items/").status_code == 200
