@@ -1,5 +1,7 @@
 """Geração do relatório pedagógico com apoio de IA (LGPD: payload anonimizado)."""
 
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -31,6 +33,26 @@ class RelatorioGerarView(APIView):
     cidade nunca vão ao modelo); o aluno é tratado por codinome na resposta.
     """
 
+    serializer_class = RelatorioGerarSerializer
+
+    @extend_schema(
+        request=RelatorioGerarSerializer,
+        responses={
+            201: inline_serializer(
+                name="RelatorioGerarResponse",
+                fields={
+                    "relatorio": RelatorioSerializer(),
+                    "payload_enviado": serializers.DictField(),
+                },
+            ),
+            400: OpenApiTypes.OBJECT,
+            404: None,
+            502: inline_serializer(
+                name="RelatorioGerarErroResponse",
+                fields={"erro": serializers.CharField()},
+            ),
+        },
+    )
     def post(self, request):
         entrada = RelatorioGerarSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
