@@ -22,7 +22,9 @@ class User(AbstractUser):
         related_name="professores",
     )
 
-    USERNAME_FIELD = "email"
+    matricula = models.CharField(max_length=100, unique=True)
+
+    USERNAME_FIELD = "matricula"
     REQUIRED_FIELDS = ["name"]
     EMAIL_FIELD = "email"
 
