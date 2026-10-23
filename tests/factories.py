@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from apps.alunos.models import Aluno, MetaDados, Responsavel
 from apps.escolas.models import Config, Escola, Turma
 from apps.items.models import Item
+from apps.pedagogico.models import Atividade, Relatorio
 
 SENHA = "Senha-forte-123"
 
@@ -89,3 +90,29 @@ class AlunoFactory(factory.django.DjangoModelFactory):
         model = Aluno
 
     nome = factory.Sequence(lambda n: f"Aluno {n}")
+
+
+class RelatorioFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Relatorio
+
+    aluno = factory.SubFactory(AlunoFactory)
+    dados = factory.LazyFunction(dict)
+
+
+class AtividadeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Atividade
+        skip_postgeneration_save = True
+
+    nome = factory.Sequence(lambda n: f"Atividade {n}")
+    tipo = factory.Sequence(lambda n: f"Tipo {n}")
+    aluno = factory.SubFactory(AlunoFactory)
+
+    @factory.post_generation
+    def relatorios(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for relatorio in extracted:
+                self.relatorios.add(relatorio)
