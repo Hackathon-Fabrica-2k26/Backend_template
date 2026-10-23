@@ -33,7 +33,13 @@ def test_registro_ok(api_client):
 def test_registro_aceita_ano_opcional(api_client):
     resp = api_client.post(
         REGISTER,
-        {"email": "bia-ano@example.com", "name": "Bia", "password": SENHA, "ano": "5º ano"},
+        {
+            "matricula": "20260099",
+            "email": "bia-ano@example.com",
+            "name": "Bia",
+            "password": SENHA,
+            "ano": "5º ano",
+        },
     )
 
     assert resp.status_code == 201

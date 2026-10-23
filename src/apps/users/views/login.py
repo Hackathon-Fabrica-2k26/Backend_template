@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,6 +18,24 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = "login"
 
+    @extend_schema(
+        request=inline_serializer(
+            name="LoginRequest",
+            fields={
+                "matricula": serializers.CharField(),
+                "password": serializers.CharField(),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="LoginOTPResponse",
+                fields={
+                    "otp_token": serializers.CharField(),
+                    "email": serializers.EmailField(),
+                },
+            )
+        },
+    )
     def post(self, request):
         matricula = request.data.get("matricula")
         password = request.data.get("password")

@@ -13,5 +13,8 @@ class DevAuthentication(BaseAuthentication):
 
     def authenticate(self, request):
         User = get_user_model()
-        usuario, _ = User.objects.get_or_create(email=self.EMAIL, defaults={"name": "Dev"})
+        usuario, _ = User.objects.get_or_create(
+            email=self.EMAIL,
+            defaults={"name": "Dev", "matricula": "dev"},
+        )
         return usuario, None

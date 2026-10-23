@@ -1,5 +1,6 @@
 
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -13,6 +14,24 @@ class OTPVerifyView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = "otp_verify"
 
+    @extend_schema(
+        request=inline_serializer(
+            name="OTPVerifyRequest",
+            fields={
+                "otp_token": serializers.CharField(),
+                "code": serializers.CharField(),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="OTPVerifyResponse",
+                fields={
+                    "refresh": serializers.CharField(),
+                    "access": serializers.CharField(),
+                },
+            )
+        },
+    )
     def post(self, request):
         otp_token = request.data.get("otp_token")
         code = request.data.get("code")
