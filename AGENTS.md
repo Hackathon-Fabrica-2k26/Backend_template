@@ -40,6 +40,15 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 - Testes criam dados com as factories de `tests/factories.py` (`UserFactory`, `ItemFactory`); crie uma factory por modelo novo.
 - Cadastro tem limite de 10 requisições/hora (`throttle_scope = "register"`); novos limites vão em `DEFAULT_THROTTLE_RATES`.
 
+## Pull Requests
+Ao abrir um PR (e também ao atualizar um já aberto), preencha sempre:
+- **Reviewers**: solicitar review de `@jonatasperaza` (`gh pr edit <n> --add-reviewer jonatasperaza`)
+- **Assignees**: atribuir o autor do PR (`gh pr edit <n> --add-assignee <autor>`)
+- **Labels**: `enhancement` por padrão (`gh pr edit <n> --add-label enhancement`); ajuste para `bug`/`refactor` se o tipo for outro
+- **Projects**: vincular ao projeto `Hackatas` da org (`gh project item-add 1 --owner Hackathon-Fabrica-2k26 --url <url-do-pr>`)
+- **Milestone**: deixar "No milestone" (não preencher)
+- O merge exige pelo menos 1 approving review (`@jonatasperaza`)
+
 ## Adicionar um recurso novo
 1. `pdm run startapp nome`, mover para `src/apps/nome`, ajustar `apps.py`; apagar `models.py`, `views.py`, `admin.py` e criar os pacotes `models/`, `serializers/`, `views/`, `admin/`
 2. `models/<entidade>.py` herdando `BaseModel` + reexport no `models/__init__.py`; `pdm run makemigrations nome`
