@@ -43,3 +43,10 @@ def test_admin_restaura_item(admin_client):
 def test_admin_de_usuarios_abre(admin_client):
     assert admin_client.get("/admin/users/user/").status_code == 200
     assert admin_client.get("/admin/users/user/add/").status_code == 200
+
+
+def test_admin_escolas_abre(admin_client):
+    assert admin_client.get("/admin/escolas/config/").status_code == 200
+    assert admin_client.get("/admin/escolas/escola/").status_code == 200
+    assert admin_client.get("/admin/escolas/turma/").status_code == 200
+

@@ -30,6 +30,17 @@ def test_registro_ok(api_client):
 
 
 @pytest.mark.django_db
+def test_registro_aceita_ano_opcional(api_client):
+    resp = api_client.post(
+        REGISTER,
+        {"email": "bia-ano@example.com", "name": "Bia", "password": SENHA, "ano": "5º ano"},
+    )
+
+    assert resp.status_code == 201
+    assert get_user_model().objects.get(email="bia-ano@example.com").ano == "5º ano"
+
+
+@pytest.mark.django_db
 def test_registro_email_repetido_sem_diferenciar_maiusculas(api_client, user):
     resp = api_client.post(
         REGISTER,
