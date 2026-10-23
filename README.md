@@ -114,6 +114,8 @@ Nos testes automatizados, use a fixture `auth_client` (`force_authenticate`).
 ## Deploy
 O `Procfile` define `release`, `web` (gunicorn) e `worker` (Celery). Configure `SECRET_KEY` (antes do primeiro push), `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `DATABASE_URL` e `REDIS_URL` no ambiente.
 
+O cache (usado pelo OTP e pelo rate limit) é compartilhado entre os workers do gunicorn: usa o Redis quando `REDIS_URL` está definida ou, por padrão, o próprio banco de dados (`DatabaseCache` na tabela `django_cache`, criada automaticamente no passo `release` com `python src/manage.py createcachetable`).
+
 Para o código OTP chegar por e-mail em produção, configure também as variáveis de SMTP:
 ```bash
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend

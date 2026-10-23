@@ -80,3 +80,19 @@ def test_auth_ativada_por_padrao(monkeypatch):
         "core.authentication.DevAuthentication"
         not in cfg.REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]
     )
+
+
+def test_cache_usa_banco_sem_redis(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x")
+    assert cfg.CACHES["default"] == {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+    }
+
+
+def test_cache_usa_redis_quando_configurado(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", REDIS_URL="redis://localhost:6379/0")
+    assert cfg.CACHES["default"] == {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://localhost:6379/0",
+    }

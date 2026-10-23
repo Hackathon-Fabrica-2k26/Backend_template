@@ -6,8 +6,13 @@ from .factories import UserFactory
 
 
 @pytest.fixture(autouse=True)
-def limpar_cache():
-    """Zera o cache (throttle) entre os testes."""
+def limpar_cache(settings):
+    """Zera o cache (throttle/OTP) entre os testes usando memória local."""
+    settings.CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
     cache.clear()
 
 
