@@ -76,10 +76,24 @@ def test_aluno_create_com_turma_inexistente_retorna_400(auth_client, db):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-def test_aluno_create_valido(auth_client, db):
-    turma = TurmaFactory()
+def test_aluno_create_sem_turma_retorna_400(auth_client, db):
+    response = auth_client.post(LIST_URL, {"nome": "Sem Turma"}, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "turma" in response.json()
+
+
+def test_aluno_create_turma_de_outro_professor_retorna_400(auth_client, db, user):
+    turma_alheia = TurmaFactory()
+    formulario = {"nome": "Novo Aluno", "turma": turma_alheia.pk}
+    response = auth_client.post(LIST_URL, formulario, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "turma" in response.json()
+
+
+def test_aluno_create_valido(auth_client, db, user):
+    turma = TurmaFactory(professores=[user])
     formulario = {"nome": "Novo Aluno", "turma": turma.pk}
-    response = auth_client.post(LIST_URL, formulario)
+    response = auth_client.post(LIST_URL, formulario, format="json")
     assert response.status_code == status.HTTP_201_CREATED
     assert response.data["nome"] == "Novo Aluno"
 
