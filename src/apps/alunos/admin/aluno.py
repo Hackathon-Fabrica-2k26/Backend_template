@@ -1,11 +1,12 @@
 from django.contrib import admin
+from safedelete.admin import SafeDeleteAdmin
 from simple_history.admin import SimpleHistoryAdmin
-from unfold.admin import ModelAdmin as UnfoldModelAdmin
+from unfold.admin import ModelAdmin
 
 from ..models import Aluno
 
 
 @admin.register(Aluno)
-class AlunoAdmin(UnfoldModelAdmin, SimpleHistoryAdmin):
-    list_display = ["id", "nome", "meta_dados", "responsavel"]
+class AlunoAdmin(SafeDeleteAdmin, SimpleHistoryAdmin, ModelAdmin):  # pyright: ignore[reportIncompatibleMethodOverride]
+    list_display = ["id", "nome", "turma", "meta_dados", "responsavel", "created_at", "deleted"]
     search_fields = ["nome"]

@@ -28,6 +28,15 @@ class Aluno(BaseModel):
         verbose_name="responsável",
     )
 
+    turma = models.ForeignKey(
+        "escolas.Turma",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="alunos",
+        verbose_name="turma",
+    )
+
     class Meta(BaseModel.Meta):
         verbose_name = "aluno"
         verbose_name_plural = "alunos"

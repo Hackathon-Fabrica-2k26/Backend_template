@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 
 from apps.escolas.models import Config
@@ -13,8 +12,8 @@ class ConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = Config
         fields = [
-            "id", 
-            "api_key", 
-            "modelo", 
+            "id",
+            "api_key",
+            "modelo",
             "campos_form",
-            ]
+        ]

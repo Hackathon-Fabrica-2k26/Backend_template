@@ -1,8 +1,9 @@
 from django.db import models
 
+from core.models import BaseModel
 
-class MetaDados(models.Model):
 
+class MetaDados(BaseModel):
     PERFIL_DISC_CHOICES = [
         ("D", "Dominância"),
         ("I", "Influência"),
@@ -18,7 +19,7 @@ class MetaDados(models.Model):
     )
     caracteristicas = models.JSONField("características", default=dict)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         verbose_name = "meta dado"
         verbose_name_plural = "meta dados"
         ordering = ["perfil_disc"]
