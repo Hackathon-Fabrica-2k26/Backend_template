@@ -26,7 +26,7 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 - Todas as rotas exigem JWT por padrão. Libere uma rota explicitamente com `permission_classes = [AllowAny]`.
 - Filtre querysets pelo usuário dono quando o dado for privado; item de outro usuário deve dar 404.
 - Listas usam paginação de 20, `filterset_fields`, `search_fields` e `ordering_fields`.
-- Rotas ficam em `apps/<app>/urls.py` e são incluídas em `config/urls.py` sob `/api/`.
+- Rotas ficam em `apps/<app>/urls.py` com `SimpleRouter` (nunca `DefaultRouter`) e são incluídas em `config/urls.py` sob `/api/`; a rota de lista nova deve entrar em `api_root` no `config/urls.py`.
 - Registre novos apps em `INSTALLED_APPS` (`apps.<nome>`).
 - Em trabalho paralelo entre issues/apps, relações com modelos ainda não integrados podem ser referenciadas por string (`"app.Model"`), sem criar um modelo substituto no app dependente. A migration só deve ser gerada quando o app/model de destino estiver disponível na branch base; então atualize a branch com `dev` e rode `pdm run makemigrations <app>` para registrar a dependência correta da migration inicial do outro app.
 - Ao trabalhar numa issue dependente, use uma branch própria baseada na branch que contém a dependência quando disponível. Antes disso, é permitido implementar models, serializers e testes usando referências string, mas não invente migrations sem o app de destino.
@@ -42,7 +42,7 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 ## Adicionar um recurso novo
 1. `pdm run startapp nome`, mover para `src/apps/nome`, ajustar `apps.py`; apagar `models.py`, `views.py`, `admin.py` e criar os pacotes `models/`, `serializers/`, `views/`, `admin/`
 2. `models/<entidade>.py` herdando `BaseModel` + reexport no `models/__init__.py`; `pdm run makemigrations nome`
-3. `serializers/<entidade>.py`, `views/<entidade>.py` (ViewSet), `urls.py` com `DefaultRouter`, todos reexportados nos `__init__.py`
-4. Incluir a rota em `config/urls.py` e o app em `INSTALLED_APPS`
+3. `serializers/<entidade>.py`, `views/<entidade>.py` (ViewSet), `urls.py` com `SimpleRouter` (nunca `DefaultRouter`), todos reexportados nos `__init__.py`
+4. Incluir a rota em `config/urls.py` (e adicionar a rota de lista nova em `api_root` no `config/urls.py`) e o app em `INSTALLED_APPS`
 5. Testes em `tests/test_nome.py` cobrindo 401, dono errado (404) e validação (400)
 6. `pdm run check && pdm run test`; se uma relação de modelo apontar para app ainda ausente, registre essa dependência como bloqueio de integração e não crie um modelo temporário no app do domínio dependente.

@@ -1,5 +1,5 @@
 [project]
-name = "backend"
+name = "backend_template"
 version = "0.1.0"
 description = "API REST com Django e DRF"
 requires-python = ">=3.11"
@@ -20,6 +20,7 @@ dependencies = [
     "dj-database-url>=3.0",
     "python-dotenv>=1.0",
     "psycopg2-binary>=2.9",
+    "google-genai>=2.33.0",
 ]
 
 [dependency-groups]
@@ -69,9 +70,11 @@ env = [
     "SECRET_KEY=chave-apenas-para-testes",
     "DATABASE_URL=",
     "REDIS_URL=",
+    "AUTH_DISABLED=False",
 ]
 
 [tool.ruff]
+cache-dir = "/tmp/.ruff_cache"
 line-length = 100
 extend-exclude = ["**/migrations/*"]
 
