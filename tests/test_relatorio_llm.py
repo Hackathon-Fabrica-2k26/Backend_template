@@ -86,3 +86,67 @@ def test_api_key_ausente():
     with pytest.raises(LLMError) as erro:
         gerar_relatorio(PAYLOAD_OK, "")
     assert "credencial" in str(erro.value)
+
+
+def test_llm_devolvendo_lista_vira_erro(monkeypatch):
+    """JSON válido que não é um objeto (ex.: lista) também é LLMError, não TypeError."""
+    monkeypatch.setattr("apps.pedagogico.services.llm._pedir_ao_gemini", lambda *a: "[1, 2, 3]")
+    with pytest.raises(LLMError):
+        gerar_relatorio(PAYLOAD_OK, "chave-secreta-da-escola")
+
+
+def test_chaves_sensiveis_sem_diferenciar_maiusculas():
+    """Variações de maiúsculas nas chaves ("Nome", "CPF", "Cidade") são removidas."""
+    dados = {
+        "Nome": "João",
+        "CPF": "123.456.789-09",
+        "Cidade": "Campinas",
+        "Data de Nascimento": "10/03/2017",
+        "titulo": "atividade de frações",
+    }
+    payload = anonimizar(dados)
+    texto = json.dumps(payload).lower()
+    assert "nome" not in payload
+    assert "cpf" not in payload
+    assert "cidade" not in payload
+    assert "data de nascimento" not in texto
+    assert payload == {"titulo": "atividade de frações"}
+
+
+def test_primeiro_nome_isolado_tambem_vira_codinome():
+    """Só o primeiro nome aparece em algum trecho: também é trocado pelo codinome."""
+    dados = {"desafios": ["João precisa de reforço; João ainda erra as frações"]}
+    payload = anonimizar(dados, nome_aluno="João da Silva")
+    texto = json.dumps(payload, ensure_ascii=False)
+    assert "João" not in texto
+    texto_sem_codinome = texto.replace("codinome_aluno", "")
+    assert payload["codinome_aluno"] in texto_sem_codinome
+
+
+def test_e2e_anonimizar_gerar_relatorio_nao_vaza_pii(monkeypatch):
+    """anonimizar() -> gerar_relatorio(): nome, CPF, responsável e data nunca
+    chegam ao conteudo enviado à LLM."""
+    capturado = {}
+
+    def fake(conteudo, api_key, modelo):
+        capturado.update({"conteudo": conteudo, "api_key": api_key})
+        return RESPOSTA_FAKE
+
+    monkeypatch.setattr("apps.pedagogico.services.llm._pedir_ao_gemini", fake)
+
+    dados = {
+        "aluno": 3,
+        "pontos_fortes": ["João da Silva é criativo e ajuda os colegas", "JOÃO é atento"],
+        "desafios": ["Apresenta nos documentos o CPF 123.456.789-09"],
+        "contexto_turma": "Nasceu 10/03/2017. Responsável legal: Maria da Silva visitou reunião.",
+    }
+    payload = anonimizar(dados, nome_aluno="João da Silva", nome_responsavel="Maria da Silva")
+    resposta = gerar_relatorio(payload, "chave-secreta-da-escola")
+
+    assert resposta["disclaimer"] == DISCLAIMER
+    texto = capturado["conteudo"].lower()
+    assert "joão" not in texto
+    assert "maria" not in texto
+    assert "123.456.789-09" not in texto
+    assert "10/03/2017" not in texto
+    assert payload["codinome_aluno"].startswith("Aluno ")
