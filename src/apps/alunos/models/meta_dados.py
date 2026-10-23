@@ -2,7 +2,6 @@ from django.db import models
 
 
 class MetaDados(models.Model):
-
     PERFIL_DISC_CHOICES = [
         ("D", "Dominância"),
         ("I", "Influência"),

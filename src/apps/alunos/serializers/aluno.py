@@ -9,6 +9,7 @@ class AlunoSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "nome",
+            "turma",
             "meta_dados",
             "responsavel",
         ]

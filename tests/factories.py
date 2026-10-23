@@ -90,6 +90,7 @@ class AlunoFactory(factory.django.DjangoModelFactory):
         model = Aluno
 
     nome = factory.Sequence(lambda n: f"Aluno {n}")
+    turma = factory.SubFactory(TurmaFactory)
 
 
 class RelatorioFactory(factory.django.DjangoModelFactory):

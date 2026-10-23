@@ -11,6 +11,7 @@ class Responsavel(models.Model):
     class Meta:
         verbose_name = "responsável"
         verbose_name_plural = "responsáveis"
+        ordering = ["nome"]
 
     def __str__(self):
         return f"{self.nome} ({self.email})"
