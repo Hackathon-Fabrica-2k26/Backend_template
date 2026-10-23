@@ -2,7 +2,13 @@ import pytest
 
 from apps.escolas.models import Turma
 
-from .factories import ConfigFactory, EscolaFactory, TurmaFactory, UserFactory
+from .factories import (
+    AlunoFactory,
+    ConfigFactory,
+    EscolaFactory,
+    TurmaFactory,
+    UserFactory,
+)
 
 URL_TURMAS = "/api/turmas/"
 URL_ESCOLAS = "/api/escolas/"
@@ -78,6 +84,38 @@ def test_criacao_turma_vincula_professor_logado(auth_client, user):
     turma_id = resp.json()["id"]
     turma = Turma.objects.get(id=turma_id)
     assert user in turma.professores.all()
+
+
+def test_turno_invalido_retorna_400(auth_client):
+    escola = EscolaFactory()
+    resp = auth_client.post(
+        URL_TURMAS,
+        {"nome": "Turma X", "escola": escola.id, "turno": "madrugada"},
+    )
+    assert resp.status_code == 400
+    assert "turno" in resp.json()
+
+
+def test_turno_e_total_estudantes_conta_apenas_alunos_ativos(auth_client, user):
+    outro_professor = UserFactory()
+    turma = TurmaFactory(nome="1º Ano A", turno="tarde", professores=[user])
+    turma_outro = TurmaFactory(nome="2º Ano B", turno="manha", professores=[outro_professor])
+
+    AlunoFactory(nome="Ativo 1", turma=turma)
+    AlunoFactory(nome="Ativo 2", turma=turma)
+    excluido = AlunoFactory(nome="Excluído", turma=turma)
+    excluido.delete()
+    AlunoFactory(nome="Aluno de Outra Turma", turma=turma_outro)
+
+    resp = auth_client.get(URL_TURMAS)
+    assert resp.status_code == 200
+    dados = resp.json()
+    assert dados["count"] == 1
+    item = dados["results"][0]
+    assert item["id"] == turma.id
+    assert item["turno"] == "tarde"
+    assert item["turno_display"] == "Tarde"
+    assert item["total_estudantes"] == 2
 
 
 def test_api_key_nao_volta_na_resposta(auth_client, user):
@@ -168,4 +206,3 @@ def test_rotas_no_schema(client):
     assert "/api/configs/" in paths
     assert "/api/escolas/" in paths
     assert "/api/turmas/" in paths
-
