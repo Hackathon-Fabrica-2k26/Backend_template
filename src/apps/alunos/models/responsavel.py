@@ -1,0 +1,16 @@
+from django.db import models
+
+
+class Responsavel(models.Model):
+    nome = models.CharField("nome", max_length=100)
+    email = models.EmailField("e-mail", max_length=255, unique=True)
+    telefone = models.CharField("telefone", max_length=20, blank=True)
+    cpf = models.CharField("CPF", max_length=11, unique=True)
+    endereco = models.CharField("endereço", max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "responsável"
+        verbose_name_plural = "responsáveis"
+
+    def __str__(self):
+        return f"{self.nome} ({self.email})"
