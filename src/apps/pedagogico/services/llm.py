@@ -84,6 +84,10 @@ def gerar_relatorio(payload: dict, api_key: str, modelo: str = MODELO_PADRAO) ->
         raise
     except Exception as erro:
         raise LLMError() from erro
+    if not isinstance(dados, dict):
+        # JSON válido, mas não é o objeto esperado (ex.: lista) — não dá para
+        # montar o relatório com ele.
+        raise LLMError()
     dados["disclaimer"] = DISCLAIMER
     return dados
 

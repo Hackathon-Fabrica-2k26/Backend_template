@@ -30,7 +30,7 @@ class User(AbstractUser):
 
     objects = UserManager()  # pyright: ignore[reportAssignmentType]
 
-    class Meta:
+    class Meta(AbstractUser.Meta):
         verbose_name = "usuário"
         verbose_name_plural = "usuários"
         ordering = ["-date_joined"]
