@@ -3,16 +3,36 @@
 from django.db import migrations, models
 
 
+def preencher_matricula(apps, schema_editor):
+    """Gera matrícula única para usuários criados antes do campo existir."""
+    User = apps.get_model("users", "User")
+    usadas = set(
+        User.objects.exclude(matricula__isnull=True).values_list("matricula", flat=True)
+    )
+    for user in User.objects.filter(matricula__isnull=True).order_by("pk"):
+        base = f"U{user.pk:05d}"
+        matricula, sufixo = base, 1
+        while matricula in usadas:
+            matricula = f"{base}-{sufixo}"
+            sufixo += 1
+        user.matricula = matricula
+        user.save(update_fields=["matricula"])
+        usadas.add(matricula)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
         ("users", "0002_user_ano_user_escola"),
     ]
 
+    # Cria como opcional e preenche; a 0004 torna obrigatória e única
+    # (separado para o Postgres não misturar UPDATE e ALTER na mesma transação).
     operations = [
         migrations.AddField(
             model_name="user",
             name="matricula",
-            field=models.CharField(max_length=100, unique=True),
+            field=models.CharField(max_length=100, null=True, blank=True),
         ),
+        migrations.RunPython(preencher_matricula, migrations.RunPython.noop),
     ]
