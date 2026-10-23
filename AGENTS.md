@@ -28,6 +28,8 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 - Listas usam paginação de 20, `filterset_fields`, `search_fields` e `ordering_fields`.
 - Rotas ficam em `apps/<app>/urls.py` e são incluídas em `config/urls.py` sob `/api/`.
 - Registre novos apps em `INSTALLED_APPS` (`apps.<nome>`).
+- Em trabalho paralelo entre issues/apps, relações com modelos ainda não integrados podem ser referenciadas por string (`"app.Model"`), sem criar um modelo substituto no app dependente. A migration só deve ser gerada quando o app/model de destino estiver disponível na branch base; então atualize a branch com `dev` e rode `pdm run makemigrations <app>` para registrar a dependência correta da migration inicial do outro app.
+- Ao trabalhar numa issue dependente, use uma branch própria baseada na branch que contém a dependência quando disponível. Antes disso, é permitido implementar models, serializers e testes usando referências string, mas não invente migrations sem o app de destino.
 - Não crie `models.py`, `views.py` etc. com várias classes. Um arquivo por entidade dentro do pacote e reexporte no `__init__.py` (com `__all__`); sem o reexport no `__init__.py`, o Django não registra o modelo, o admin nem a task.
 - Admin usa `unfold.admin.ModelAdmin` junto com `SimpleHistoryAdmin`.
 - Configuração vem de variáveis de ambiente (`.env`); nunca coloque segredo no código.
@@ -43,4 +45,4 @@ Backend Django + DRF. Siga estes padrões ao adicionar código.
 3. `serializers/<entidade>.py`, `views/<entidade>.py` (ViewSet), `urls.py` com `DefaultRouter`, todos reexportados nos `__init__.py`
 4. Incluir a rota em `config/urls.py` e o app em `INSTALLED_APPS`
 5. Testes em `tests/test_nome.py` cobrindo 401, dono errado (404) e validação (400)
-6. `pdm run check && pdm run test`
+6. `pdm run check && pdm run test`; se uma relação de modelo apontar para app ainda ausente, registre essa dependência como bloqueio de integração e não crie um modelo temporário no app do domínio dependente.

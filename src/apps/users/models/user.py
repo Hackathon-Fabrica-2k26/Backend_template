@@ -13,6 +13,14 @@ class User(AbstractUser):
     username = None
     email = models.EmailField("e-mail", unique=True, db_index=True)
     name = models.CharField("nome", max_length=255, blank=True)
+    ano = models.CharField("ano", max_length=45, blank=True)
+    escola = models.ForeignKey(
+        "escolas.Escola",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="professores",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name"]
@@ -20,7 +28,7 @@ class User(AbstractUser):
 
     objects = UserManager()  # pyright: ignore[reportAssignmentType]
 
-    class Meta(AbstractUser.Meta):
+    class Meta:
         verbose_name = "usuário"
         verbose_name_plural = "usuários"
         ordering = ["-date_joined"]
