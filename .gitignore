@@ -15,4 +15,4 @@ staticfiles/
 models.dot
 .superpowers/
 docs/superpowers/
-.opencode-data/
+.opencode-data/.opencode-data/
