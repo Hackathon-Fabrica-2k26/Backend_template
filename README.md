@@ -66,7 +66,13 @@ Cria: 1 escola + config, 1 professor, 2 turmas, 6 alunos (com responsável e per
 |---|---|
 | E-mail | `professor@demo.com` |
 | Matrícula | `DEMO0001` |
-| Senha | `demo-senha-123` |
+| Senha | `SEED_DEMO_PASSWORD` (padrão `demo-senha-123` em desenvolvimento) |
+
+A senha e a `api_key` demo vêm das variáveis de ambiente; o padrão público (`demo-senha-123` / `demo-api-key-troque-no-admin`) vale **só quando `DEBUG=True`**. Com `DEBUG=False` e sem as variáveis, o comando aborta — isso evita subir em deploy (Dokku) uma conta de professor com senha pública:
+
+```bash
+SEED_DEMO_PASSWORD=minha-senha SEED_DEMO_API_KEY=minha-chave pdm run seed-demo
+```
 
 São dados de apresentação, claramente fictícios. Troque a `api_key` da `Config` no admin antes de chamar a LLM de verdade.
 
@@ -101,6 +107,8 @@ Nos testes automatizados, use a fixture `auth_client` (`force_authenticate`).
 | `DATABASE_URL` | vazio (SQLite) | ex.: `postgres://user:senha@host:5432/banco` |
 | `REDIS_URL` | vazio (Celery síncrono) | broker do Celery, ex.: `redis://localhost:6379/0` |
 | `REDIS_PORT` | `6379` | porta do Redis no host (`docker-compose.yml`) |
+| `SEED_DEMO_PASSWORD` | vazio | senha do professor demo do `seed_demo`; padrão `demo-senha-123` só com `DEBUG=True`, obrigatória fora dele |
+| `SEED_DEMO_API_KEY` | vazio | `api_key` demo da `Config` criada pelo `seed_demo`; mesmo comportamento da senha |
 
 ## Deploy
 O `Procfile` define `release`, `web` (gunicorn) e `worker` (Celery). Configure `SECRET_KEY` (antes do primeiro push), `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `DATABASE_URL` e `REDIS_URL` no ambiente.

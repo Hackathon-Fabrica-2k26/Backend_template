@@ -4,18 +4,23 @@ Uso: ``python src/manage.py seed_demo`` (ou ``pdm run seed-demo``).
 
 Idempotente: rodar de novo não duplica escolas, turmas, alunos, professores
 nem relatórios. Os dados são claramente fictícios e servem só para a
-apresentação; credenciais do professor demo estão documentadas no README.
+apresentação; credenciais do professor demo estão documentadas no README
+(definíveis por ``SEED_DEMO_PASSWORD`` / ``SEED_DEMO_API_KEY``).
 """
 
+import os
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from apps.alunos.models import Aluno, MetaDados, Responsavel
 from apps.escolas.models import Config, Escola, Turma
 from apps.pedagogico.models import Relatorio
 
-SENHA_PROFESSOR = "demo-senha-123"
+SENHA_PROFESSOR_PADRAO = "demo-senha-123"
+API_KEY_PADRAO = "demo-api-key-troque-no-admin"
 EMAIL_PROFESSOR = "professor@demo.com"
 NOME_ESCOLA = "Escola Marsupi Demo"
 
@@ -193,16 +198,18 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        senha_professor = self._credencial_demo("SEED_DEMO_PASSWORD", SENHA_PROFESSOR_PADRAO)
+        api_key_demo = self._credencial_demo("SEED_DEMO_API_KEY", API_KEY_PADRAO)
         User = get_user_model()
 
-        # 1 escola + config
+        # 1 escola + config (só cria Config quando a escola não tem nenhuma)
         escola, escola_criada = Escola.objects.get_or_create(
             nome=NOME_ESCOLA,
             defaults={"endereco": "Rua da Demo, 101"},
         )
         if escola.config_id is None:
             escola.config = Config.objects.create(
-                api_key="demo-api-key-troque-no-admin",
+                api_key=api_key_demo,
                 modelo="demo-model",
             )
             escola.save()
@@ -218,7 +225,7 @@ class Command(BaseCommand):
             },
         )
         if professor_criado:
-            professor.set_password(SENHA_PROFESSOR)
+            professor.set_password(senha_professor)
             professor.save()
         if professor.escola != escola:
             professor.escola = escola
@@ -269,7 +276,7 @@ class Command(BaseCommand):
             )
         )
         self.stdout.write(
-            self.style.SUCCESS(f"Professor: {EMAIL_PROFESSOR} (senha: {SENHA_PROFESSOR})")
+            self.style.SUCCESS(f"Professor: {EMAIL_PROFESSOR} (senha: {senha_professor})")
         )
         self.stdout.write(
             self.style.SUCCESS(
@@ -278,6 +285,20 @@ class Command(BaseCommand):
             )
         )
         self.stdout.write(self.style.SUCCESS("seed_demo concluído (idempotente)."))
+
+    @staticmethod
+    def _credencial_demo(variavel, padrao):
+        """Credencial demo vem de variável de ambiente.
+
+        Fora de ``DEBUG`` e sem a variável definida, o seed aborta para
+        não encostar em deploys com credencial pública.
+        """
+        valor = os.environ.get(variavel)
+        if valor:
+            return valor
+        if not settings.DEBUG:
+            raise CommandError(f"Defina {variavel} para rodar o seed fora do DEBUG.")
+        return padrao
 
     @staticmethod
     def _matricula_disponivel(User):
