@@ -1,3 +1,4 @@
+from django.db.models import QuerySet
 from rest_framework import viewsets
 
 from apps.alunos.models import Responsavel
@@ -11,7 +12,7 @@ class ResponsavelViewSet(viewsets.ModelViewSet):
     search_fields = ["nome"]
     ordering_fields = ["nome", "created_at"]
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[Responsavel]:
         if getattr(self, "swagger_fake_view", False):
             return Responsavel.objects.none()
         return Responsavel.objects.filter(alunos__turma__professores=self.request.user).distinct()
