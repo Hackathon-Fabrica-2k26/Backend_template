@@ -101,6 +101,29 @@ Nos testes automatizados, use a fixture `auth_client` (`force_authenticate`).
 | `DATABASE_URL` | vazio (SQLite) | ex.: `postgres://user:senha@host:5432/banco` |
 | `REDIS_URL` | vazio (Celery síncrono) | broker do Celery, ex.: `redis://localhost:6379/0` |
 | `REDIS_PORT` | `6379` | porta do Redis no host (`docker-compose.yml`) |
+| `EMAIL_BACKEND` | `django.core.mail.backends.console.EmailBackend` | backend de e-mail (`smtp.EmailBackend` em produção) |
+| `EMAIL_HOST` | `localhost` | servidor SMTP (ex.: `smtp.gmail.com`) |
+| `EMAIL_PORT` | `587` | porta SMTP |
+| `EMAIL_HOST_USER` | vazio | usuário SMTP |
+| `EMAIL_HOST_PASSWORD` | vazio | senha SMTP (ex.: senha de app do Gmail) |
+| `EMAIL_USE_TLS` | `True` | ativa STARTTLS |
+| `EMAIL_USE_SSL` | `False` | ativa SSL direto |
+| `EMAIL_TIMEOUT` | `10` | timeout de conexão SMTP em segundos |
+| `DEFAULT_FROM_EMAIL` | `Marsupi <no-reply@marsupi.local>` | remetente padrão dos e-mails (OTP) |
 
 ## Deploy
 O `Procfile` define `release`, `web` (gunicorn) e `worker` (Celery). Configure `SECRET_KEY` (antes do primeiro push), `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `DATABASE_URL` e `REDIS_URL` no ambiente.
+
+Para o código OTP chegar por e-mail em produção, configure também as variáveis de SMTP:
+```bash
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=seu-email@gmail.com
+EMAIL_HOST_PASSWORD=sua-senha-de-app
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+EMAIL_TIMEOUT=10
+DEFAULT_FROM_EMAIL="Marsupi <no-reply@marsupi.local>"
+```
+
