@@ -1,3 +1,4 @@
+from django.db.models import Count, Q
 from rest_framework import viewsets
 
 from apps.escolas.models import Turma
@@ -13,7 +14,17 @@ class TurmaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Turma.objects.none()
-        return Turma.objects.filter(professores=self.request.user).distinct()
+        return (
+            Turma.objects.filter(professores=self.request.user)
+            .annotate(
+                total_estudantes=Count(
+                    "alunos",
+                    filter=Q(alunos__deleted__isnull=True),
+                    distinct=True,
+                )
+            )
+            .distinct()
+        )
 
     def perform_create(self, serializer):
         turma = serializer.save()
