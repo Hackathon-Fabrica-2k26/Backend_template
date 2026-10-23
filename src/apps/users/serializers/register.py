@@ -8,6 +8,15 @@ User = get_user_model()
 
 
 class RegisterSerializer(serializers.ModelSerializer):
+    matricula = serializers.CharField(
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message="Já existe um usuário com esta matrícula.",
+            )
+        ]
+    )
+
     email = serializers.EmailField(
         validators=[
             UniqueValidator(
@@ -17,18 +26,27 @@ class RegisterSerializer(serializers.ModelSerializer):
             )
         ]
     )
+
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ["id", "email", "name", "password"]
+        fields = ["id", "matricula", "email", "name", "password", "ano", "escola"]
 
     def validate(self, attrs):
-        usuario = User(email=attrs.get("email", ""), name=attrs.get("name", ""))
+        usuario = User(
+            matricula=attrs.get("matricula", ""),
+            email=attrs.get("email", ""),
+            name=attrs.get("name", ""),
+        )
+
         try:
             validate_password(attrs["password"], usuario)
         except DjangoValidationError as exc:
-            raise serializers.ValidationError({"password": list(exc.messages)}) from exc
+            raise serializers.ValidationError(
+                {"password": list(exc.messages)}
+            ) from exc
+
         return attrs
 
     def create(self, validated_data):

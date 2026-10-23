@@ -11,7 +11,7 @@ from ..models import User
 class UserCreationForm(UnfoldUserCreationForm):
     class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         model = User
-        fields = ("email", "name")
+        fields = ("email", "name", "matricula")
 
 
 class UserChangeForm(UnfoldUserChangeForm):
@@ -26,13 +26,13 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):  # pyright: ignore[reportIncompatibl
     add_form = UserCreationForm
     change_password_form = AdminPasswordChangeForm
 
-    list_display = ("email", "name", "is_staff", "is_active", "date_joined")
+    list_display = ("email", "name", "matricula", "is_staff", "is_active", "date_joined")
     list_filter = ("is_staff", "is_superuser", "is_active")
     search_fields = ("email", "name")
     ordering = ("-date_joined",)
 
     fieldsets = (
-        (None, {"fields": ("email", "password")}),
+        (None, {"fields": ("email", "password", "matricula")}),
         ("Dados pessoais", {"fields": ("name",)}),
         (
             "Permissões",
@@ -41,5 +41,11 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):  # pyright: ignore[reportIncompatibl
         ("Datas", {"fields": ("last_login", "date_joined")}),
     )
     add_fieldsets = (
-        (None, {"classes": ("wide",), "fields": ("email", "name", "password1", "password2")}),
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("matricula", "email", "name", "password1", "password2"),
+            },
+        ),
     )

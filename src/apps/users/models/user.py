@@ -13,9 +13,19 @@ class User(AbstractUser):
     username = None
     email = models.EmailField("e-mail", unique=True, db_index=True)
     name = models.CharField("nome", max_length=255, blank=True)
+    ano = models.CharField("ano", max_length=45, blank=True)
+    escola = models.ForeignKey(
+        "escolas.Escola",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="professores",
+    )
 
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["name"]
+    matricula = models.CharField(max_length=100, unique=True)
+
+    USERNAME_FIELD = "matricula"
+    REQUIRED_FIELDS = ["email", "name"]
     EMAIL_FIELD = "email"
 
     objects = UserManager()  # pyright: ignore[reportAssignmentType]

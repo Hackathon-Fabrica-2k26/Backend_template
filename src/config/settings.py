@@ -48,6 +48,9 @@ INSTALLED_APPS = [
     "core",
     "apps.users",
     "apps.items",
+    "apps.alunos",
+    "apps.escolas",
+    "apps.pedagogico",
 ]
 
 MIDDLEWARE = [
@@ -125,7 +128,11 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
     ],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"register": "10/hour"},
+    "DEFAULT_THROTTLE_RATES": {
+        "register": "10/hour",
+        "login": "5/min",
+        "otp_verify": "5/min",
+        "otp_resend": "2/min",},
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -152,3 +159,8 @@ CELERY_TASK_IGNORE_RESULT = True
 CELERY_BROKER_CONNECTION_TIMEOUT = 3
 CELERY_BROKER_TRANSPORT_OPTIONS = {"max_retries": 1, "socket_connect_timeout": 3}
 CELERY_TASK_PUBLISH_RETRY_POLICY = {"max_retries": 1, "interval_start": 0, "interval_max": 0.2}
+
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
