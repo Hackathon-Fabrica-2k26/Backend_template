@@ -14,7 +14,9 @@ class User(AbstractUser):
     email = models.EmailField("e-mail", unique=True, db_index=True)
     name = models.CharField("nome", max_length=255, blank=True)
 
-    USERNAME_FIELD = "email"
+    matricula = models.CharField(max_length=100, unique=True)
+
+    USERNAME_FIELD = "matricula"
     REQUIRED_FIELDS = ["name"]
     EMAIL_FIELD = "email"
 
