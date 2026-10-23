@@ -2,6 +2,7 @@
 import factory
 from django.contrib.auth import get_user_model
 
+from apps.escolas.models import Config, Escola, Turma
 from apps.items.models import Item
 
 SENHA = "Senha-forte-123"
@@ -26,3 +27,38 @@ class ItemFactory(factory.django.DjangoModelFactory):
 
     title = factory.Sequence(lambda n: f"Item {n}")
     owner = factory.SubFactory(UserFactory)
+
+
+class ConfigFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Config
+
+    api_key = factory.Sequence(lambda n: f"key-{n}")
+    modelo = factory.Sequence(lambda n: f"modelo-{n}")
+    campos_form = factory.LazyFunction(dict)
+
+
+class EscolaFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Escola
+
+    nome = factory.Sequence(lambda n: f"Escola {n}")
+    endereco = factory.Sequence(lambda n: f"Rua {n}")
+    config = factory.SubFactory(ConfigFactory)
+
+
+class TurmaFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Turma
+        skip_postgeneration_save = True
+
+    nome = factory.Sequence(lambda n: f"Turma {n}")
+    escola = factory.SubFactory(EscolaFactory)
+
+    @factory.post_generation
+    def professores(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for professor in extracted:
+                self.professores.add(professor)
