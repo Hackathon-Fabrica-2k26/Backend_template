@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     "core",
     "apps.users",
     "apps.items",
-    "apps.alunos"
+    "apps.alunos",
+    "apps.escolas",
 ]
 
 MIDDLEWARE = [
