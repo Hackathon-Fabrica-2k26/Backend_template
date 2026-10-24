@@ -19,6 +19,7 @@ def api_root(request, format=None):
             "configs": reverse("config-list", request=request, format=format),
             "escolas": reverse("escola-list", request=request, format=format),
             "turmas": reverse("turma-list", request=request, format=format),
+            "chamada-reconhecer": reverse("chamada-reconhecer", request=request, format=format),
             "alunos": reverse("aluno-list", request=request, format=format),
             "responsaveis": reverse("responsavel-list", request=request, format=format),
             "meta-dados": reverse("meta-dados-list", request=request, format=format),
