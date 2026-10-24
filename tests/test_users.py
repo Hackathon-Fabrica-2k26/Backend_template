@@ -123,7 +123,6 @@ def test_registro_tem_limite_de_requisicoes(api_client):
     assert codigos[:10] == [201] * 10
     assert 429 in codigos[10:]
 
-
 @pytest.mark.django_db
 def test_login_por_matricula(api_client, user):
     resp = api_client.post(
@@ -138,7 +137,6 @@ def test_login_por_matricula(api_client, user):
     assert "email" in dados
     assert "access" not in dados
     assert "refresh" not in dados
-
 
 @pytest.mark.django_db
 def test_me_sem_token(api_client):

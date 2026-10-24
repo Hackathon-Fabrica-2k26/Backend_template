@@ -59,12 +59,9 @@ class AtividadeVariacaoViewSet(viewsets.ModelViewSet):
         variacoes_ativas = atividade.variacoes.exclude(
             status=AtividadeVariacao.StatusChoices.DESCARTADA
         )
-        if (
-            variacoes_ativas.exists()
-            and not variacoes_ativas.exclude(
-                status=AtividadeVariacao.StatusChoices.APROVADA
-            ).exists()
-        ):
+        if variacoes_ativas.exists() and not variacoes_ativas.exclude(
+            status=AtividadeVariacao.StatusChoices.APROVADA
+        ).exists():
             atividade.status = Atividade.StatusChoices.APROVADA
             atividade.save(update_fields=["status", "updated_at"])
 

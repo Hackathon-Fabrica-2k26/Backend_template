@@ -34,10 +34,16 @@ class RelatorioSerializer(serializers.ModelSerializer):
         """O aluno precisa pertencer a uma das turmas do professor logado."""
         request = self.context.get("request")
 
-        if getattr(request, "user", None) is not None and request.user.is_authenticated:
+        if (
+            getattr(request, "user", None) is not None
+            and request.user.is_authenticated
+        ):
             turma = aluno.turma
 
-            if turma is None or not turma.professores.filter(pk=request.user.pk).exists():
+            if (
+                turma is None
+                or not turma.professores.filter(pk=request.user.pk).exists()
+            ):
                 raise serializers.ValidationError(
                     "Você só pode vincular relatórios a alunos das suas turmas."
                 )
@@ -48,7 +54,10 @@ class RelatorioSerializer(serializers.ModelSerializer):
         if atividade is None:
             return None
         request = self.context.get("request")
-        if getattr(request, "user", None) is not None and request.user.is_authenticated:
+        if (
+            getattr(request, "user", None) is not None
+            and request.user.is_authenticated
+        ):
             if not atividade.turma.professores.filter(pk=request.user.pk).exists():
                 raise serializers.ValidationError(
                     "Você só pode vincular relatórios a atividades das suas turmas."

@@ -162,13 +162,11 @@ class Command(BaseCommand):
             professores.append(user)
 
         # 5. Turmas
-        turnos = cycle(
-            [
-                Turma.TurnoChoices.MANHA,
-                Turma.TurnoChoices.TARDE,
-                Turma.TurnoChoices.INTEGRAL,
-            ]
-        )
+        turnos = cycle([
+            Turma.TurnoChoices.MANHA,
+            Turma.TurnoChoices.TARDE,
+            Turma.TurnoChoices.INTEGRAL,
+        ])
         letras_turmas = ["A", "B", "C", "D", "E"]
         turmas = []
         prof_index = 0
@@ -427,7 +425,9 @@ class Command(BaseCommand):
         self.stdout.write(f"{'Entidade':<25} | {'Novos':<8} | {'Existentes':<10}")
         self.stdout.write("-" * 50)
         for entidade, dados in stats.items():
-            self.stdout.write(f"{entidade:<25} | {dados['criados']:<8} | {dados['existentes']:<10}")
+            self.stdout.write(
+                f"{entidade:<25} | {dados['criados']:<8} | {dados['existentes']:<10}"
+            )
         self.stdout.write("-" * 50)
 
         admin_email = os.getenv("SEED_ADMIN_EMAIL", "admin@exemplo.com")

@@ -8,4 +8,5 @@ class RelatoriosAlunoView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = RelatorioSerializer
 
-    def get_queryset(self): ...
+    def get_queryset(self):
+        ...

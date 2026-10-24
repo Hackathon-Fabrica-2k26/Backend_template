@@ -49,3 +49,4 @@ def test_admin_escolas_abre(admin_client):
     assert admin_client.get("/admin/escolas/config/").status_code == 200
     assert admin_client.get("/admin/escolas/escola/").status_code == 200
     assert admin_client.get("/admin/escolas/turma/").status_code == 200
+

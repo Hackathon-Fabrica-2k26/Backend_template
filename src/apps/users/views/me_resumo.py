@@ -16,7 +16,9 @@ class MeResumoView(APIView):
     def get(self, request):
         user = request.user
         resumo = {
-            "turmas": Turma.objects.filter(professores=user, ano_letivo=ano_letivo_atual())
+            "turmas": Turma.objects.filter(
+                professores=user, ano_letivo=ano_letivo_atual()
+            )
             .distinct()
             .count(),
             "atividades": Atividade.objects.filter(criada_por=user).count(),

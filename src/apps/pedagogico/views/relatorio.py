@@ -77,7 +77,9 @@ class RelatorioViewSet(viewsets.ModelViewSet):
             if isinstance(valor, (dict, list)):
                 valor = json.dumps(valor, ensure_ascii=False)
 
-            chave_formatada = escape(str(chave).replace("_", " ").title())
+            chave_formatada = escape(
+                str(chave).replace("_", " ").title()
+            )
             valor_formatado = escape(str(valor))
 
             conteudo.append(
@@ -129,11 +131,15 @@ class RelatorioViewSet(viewsets.ModelViewSet):
             buffer.getvalue(),
             content_type="application/pdf",
         )
-        resposta["Content-Disposition"] = f'attachment; filename="relatorio-{relatorio.pk}.pdf"'
+        resposta["Content-Disposition"] = (
+            f'attachment; filename="relatorio-{relatorio.pk}.pdf"'
+        )
         return resposta
 
     def get_queryset(self) -> QuerySet[Relatorio]:  # type: ignore
         if getattr(self, "swagger_fake_view", False):
             return Relatorio.objects.none()
 
-        return Relatorio.objects.filter(aluno__turma__professores=self.request.user).distinct()
+        return Relatorio.objects.filter(
+            aluno__turma__professores=self.request.user
+        ).distinct()

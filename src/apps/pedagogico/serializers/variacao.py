@@ -86,7 +86,9 @@ class AtividadeVariacaoSerializer(serializers.ModelSerializer):
         variacao = super().update(instance, validated_data)
         if alunos is not None:
             ids_novos = {aluno.pk for aluno in alunos}
-            VariacaoAluno.objects.filter(variacao=variacao).exclude(aluno_id__in=ids_novos).delete()
+            VariacaoAluno.objects.filter(variacao=variacao).exclude(
+                aluno_id__in=ids_novos
+            ).delete()
             for aluno in alunos:
                 VariacaoAluno.objects.get_or_create(variacao=variacao, aluno=aluno)
         return variacao
