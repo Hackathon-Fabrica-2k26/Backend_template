@@ -4,14 +4,16 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from apps.alunos.models import Aluno, MetaDados, Responsavel
 from apps.escolas.models import Config, Escola, Turma
+from apps.escolas.services.chamada import PROMPT_USUARIO_CHAMADA, SYSTEM_PROMPT_CHAMADA
 from apps.pedagogico.models import Atividade, Relatorio
 
 from .factories import EscolaFactory
 
 RECONHECER_URL = "/api/chamada/reconhecer/"
 
-# Bytes mínimos simulando uma imagem JPEG em memória.
+# Bytes mínimos simulando uma imagem JPEG e um PDF em memória.
 JPEG_BYTES = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xd9"
+PDF_BYTES = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF"
 
 
 def _imagem_valida(nome: str = "chamada.jpg", content_type: str = "image/jpeg", tamanho: int = 0):
@@ -19,6 +21,13 @@ def _imagem_valida(nome: str = "chamada.jpg", content_type: str = "image/jpeg", 
         JPEG_BYTES if tamanho <= 0 else (JPEG_BYTES + b"x" * max(0, tamanho - len(JPEG_BYTES)))
     )
     return SimpleUploadedFile(nome, conteudo, content_type=content_type)
+
+
+def _pdf_valido(nome: str = "chamada.pdf", tamanho: int = 0):
+    conteudo = (
+        PDF_BYTES if tamanho <= 0 else (PDF_BYTES + b"x" * max(0, tamanho - len(PDF_BYTES)))
+    )
+    return SimpleUploadedFile(nome, conteudo, content_type="application/pdf")
 
 
 def test_chamada_reconhecer_exige_autenticacao(api_client, db):
@@ -71,11 +80,11 @@ def test_chamada_reconhecer_sucesso_limpa_numeros_duplicatas_e_nao_salva_nada(
         return (
             "```json\n"
             '{"nomes": ['
-            '"1. Alice Souza", '
-            '"02 - Bruno Lima", '
-            '"alice souza", '
+            '{"nome": "1. Alice Souza", "confianca": 0.96}, '
+            '{"nome": "02 - Bruno Lima", "confianca": 0.72}, '
+            '{"nome": "alice souza", "confianca": 0.80}, '
             '"  3) Carla   Mendes  ", '
-            '""'
+            '{"nome": "", "confianca": 0.5}'
             "]}\n```"
         )
 
@@ -101,10 +110,15 @@ def test_chamada_reconhecer_sucesso_limpa_numeros_duplicatas_e_nao_salva_nada(
     assert response.status_code == 200
     assert response.json() == {
         "nomes": [
+            {"nome": "Alice Souza", "confianca": 0.96},
+            {"nome": "Bruno Lima", "confianca": 0.72},
+            {"nome": "Carla Mendes", "confianca": 1.0},
+        ],
+        "nomes_texto": [
             "Alice Souza",
             "Bruno Lima",
             "Carla Mendes",
-        ]
+        ],
     }
     assert capturado["imagem_bytes"] == JPEG_BYTES
     assert capturado["mime"] == "image/png"
@@ -122,6 +136,60 @@ def test_chamada_reconhecer_sucesso_limpa_numeros_duplicatas_e_nao_salva_nada(
         Relatorio.objects.count(),
     )
     assert contagens_depois == contagens_antes
+
+
+def test_chamada_reconhecer_aceita_pdf_e_ignora_campos_extras_e_datas(
+    auth_client, db, user, monkeypatch
+):
+    user.escola = EscolaFactory()
+    user.save()
+
+    capturado = {}
+
+    def fake_ocr(imagem_bytes, mime, api_key, modelo):
+        capturado.update({"imagem_bytes": imagem_bytes, "mime": mime})
+        return (
+            '{"nomes": ['
+            '{"nome": "1. Daniel Rocha 14/05/2017", "confianca": 0.91, '
+            '"data_nascimento": "14/05/2017", "observacoes": "Consulta médica"}, '
+            '{"nome": "2. Eduarda Alves", "confianca": 1.5, "observacao": "Falta justificada"}, '
+            '{"nome": "3. Felipe Costa", "confianca": -0.2, "matricula": "2026003"}'
+            "]}"
+        )
+
+    monkeypatch.setattr("apps.escolas.services.chamada._pedir_ocr_ao_gemini", fake_ocr)
+
+    response = auth_client.post(
+        RECONHECER_URL,
+        {"imagem": _pdf_valido("lista_chamada.pdf")},
+        format="multipart",
+    )
+
+    assert response.status_code == 200
+    dados = response.json()
+    assert capturado["imagem_bytes"] == PDF_BYTES
+    assert capturado["mime"] == "application/pdf"
+    assert dados == {
+        "nomes": [
+            {"nome": "Daniel Rocha", "confianca": 0.91},
+            {"nome": "Eduarda Alves", "confianca": 1.0},
+            {"nome": "Felipe Costa", "confianca": 0.0},
+        ],
+        "nomes_texto": [
+            "Daniel Rocha",
+            "Eduarda Alves",
+            "Felipe Costa",
+        ],
+    }
+    for item in dados["nomes"]:
+        assert set(item.keys()) == {"nome", "confianca"}
+        assert "14/05/2017" not in item["nome"]
+
+    # Verifica que o prompt instrui a extrair só a coluna de nomes e ignorar datas/observações
+    assert "coluna de nomes" in SYSTEM_PROMPT_CHAMADA.lower()
+    assert "datas de nascimento" in SYSTEM_PROMPT_CHAMADA.lower()
+    assert "observações" in SYSTEM_PROMPT_CHAMADA.lower()
+    assert "confianca" in PROMPT_USUARIO_CHAMADA.lower()
 
 
 def test_chamada_reconhecer_sem_config_da_escola_retorna_502(auth_client, db, user):
