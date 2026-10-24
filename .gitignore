@@ -16,3 +16,5 @@ models.dot
 .superpowers/
 docs/superpowers/
 .opencode-data/
+scripts/
+.claude/

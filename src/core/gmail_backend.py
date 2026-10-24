@@ -1,4 +1,4 @@
-"""Custom Django EmailBackend que envia e-mails via Gmail API utilizando a conta autenticada do usuário."""
+"""Custom Django EmailBackend que envia e-mails via Gmail API."""
 
 import base64
 import json
@@ -6,23 +6,28 @@ import logging
 import subprocess
 import urllib.request
 from email.mime.text import MIMEText
+
 from django.core.mail.backends.base import BaseEmailBackend
 
 logger = logging.getLogger(__name__)
 
-NODE_AUTH_SCRIPT = """
-import { readCredential } from '/home/matheus/.npm/_npx/d6e8705027e519a1/node_modules/@aaronsb/google-workspace-mcp/build/accounts/credentials.js';
+_CRED_PATH = (
+    "/home/matheus/.npm/_npx/d6e8705027e519a1/node_modules/"
+    "@aaronsb/google-workspace-mcp/build/accounts/credentials.js"
+)
+NODE_AUTH_SCRIPT = f"""
+import {{ readCredential }} from '{_CRED_PATH}';
 const c = await readCredential('matheus.vidal.zenere@gmail.com');
-const res = await fetch('https://oauth2.googleapis.com/token', {
+const res = await fetch('https://oauth2.googleapis.com/token', {{
   method: 'POST',
-  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  body: new URLSearchParams({
+  headers: {{ 'Content-Type': 'application/x-www-form-urlencoded' }},
+  body: new URLSearchParams({{
     client_id: c.client_id,
     client_secret: c.client_secret,
     refresh_token: c.refresh_token,
     grant_type: 'refresh_token'
-  })
-});
+  }})
+}});
 const data = await res.json();
 process.stdout.write(data.access_token || '');
 """
@@ -77,7 +82,8 @@ class GmailApiEmailBackend(BaseEmailBackend):
                         )
                         with urllib.request.urlopen(req, timeout=10) as resp:
                             res_json = json.loads(resp.read().decode("utf-8"))
-                            logger.info(f"E-mail enviado com sucesso via Gmail API! ID: {res_json.get('id')}")
+                            msg_id = res_json.get("id")
+                            logger.info(f"E-mail enviado com sucesso via Gmail API! ID: {msg_id}")
                     sent_count += 1
                 else:
                     sent_count += 1
