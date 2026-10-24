@@ -1,21 +1,51 @@
+
 from rest_framework import serializers
+
+from apps.pedagogico.services import DISCLAIMER
 
 from ..models import Relatorio
 
 
 class RelatorioSerializer(serializers.ModelSerializer):
+    disclaimer = serializers.SerializerMethodField()
+
     class Meta:
         model = Relatorio
-        fields = ["id", "aluno", "dados", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "aluno",
+            "tipo",
+            "dados",
+            "disclaimer",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "disclaimer",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_disclaimer(self, obj):
+        return DISCLAIMER
 
     def validate_aluno(self, aluno):
         """O aluno precisa pertencer a uma das turmas do professor logado."""
         request = self.context.get("request")
-        if getattr(request, "user", None) is not None and request.user.is_authenticated:
+
+        if (
+            getattr(request, "user", None) is not None
+            and request.user.is_authenticated
+        ):
             turma = aluno.turma
-            if turma is None or not turma.professores.filter(pk=request.user.pk).exists():
+
+            if (
+                turma is None
+                or not turma.professores.filter(pk=request.user.pk).exists()
+            ):
                 raise serializers.ValidationError(
                     "Você só pode vincular relatórios a alunos das suas turmas."
                 )
+
         return aluno
