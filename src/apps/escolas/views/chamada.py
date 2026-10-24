@@ -1,4 +1,4 @@
-"""Endpoint para reconhecer nomes de alunos em foto de lista de chamada (OCR)."""
+"""Endpoint para reconhecer nomes de alunos em foto ou PDF de lista de chamada (OCR)."""
 
 from pathlib import Path
 
@@ -18,6 +18,7 @@ MIMES_PERMITIDOS = {
     "image/jpg": "image/jpeg",
     "image/png": "image/png",
     "image/webp": "image/webp",
+    "application/pdf": "application/pdf",
 }
 
 EXTENSOES_PARA_MIME = {
@@ -25,11 +26,12 @@ EXTENSOES_PARA_MIME = {
     ".jpeg": "image/jpeg",
     ".png": "image/png",
     ".webp": "image/webp",
+    ".pdf": "application/pdf",
 }
 
 
 class ChamadaReconhecerSerializer(serializers.Serializer):
-    """Valida o arquivo de imagem enviado no multipart/form-data."""
+    """Valida o arquivo (imagem ou PDF) enviado no multipart/form-data."""
 
     imagem = serializers.FileField(required=True)
 
@@ -37,7 +39,7 @@ class ChamadaReconhecerSerializer(serializers.Serializer):
         if arquivo.size <= 0:
             raise serializers.ValidationError("O arquivo enviado está vazio.")
         if arquivo.size > TAMANHO_MAXIMO_BYTES:
-            raise serializers.ValidationError("A imagem deve ter no máximo 10 MB.")
+            raise serializers.ValidationError("O arquivo deve ter no máximo 10 MB.")
 
         content_type = (getattr(arquivo, "content_type", "") or "").lower().strip()
         extensao = Path(getattr(arquivo, "name", "") or "").suffix.lower()
@@ -47,23 +49,32 @@ class ChamadaReconhecerSerializer(serializers.Serializer):
             mime = EXTENSOES_PARA_MIME.get(extensao)
         if mime is None or (extensao and extensao not in EXTENSOES_PARA_MIME):
             raise serializers.ValidationError(
-                "Formato inválido. Envie uma imagem JPG, PNG ou WEBP."
+                "Formato inválido. Envie um arquivo PDF, JPG, PNG ou WEBP."
             )
 
         self.context["mime"] = mime
         return arquivo
 
 
-class ChamadaReconhecerRespostaSerializer(serializers.Serializer):
-    """Lista de nomes reconhecidos na imagem da chamada."""
+class ChamadaNomeItemSerializer(serializers.Serializer):
+    """Item reconhecido na chamada com nome e índice de confiança."""
 
-    nomes = serializers.ListField(child=serializers.CharField())
+    nome = serializers.CharField()
+    confianca = serializers.FloatField(min_value=0.0, max_value=1.0)
+
+
+class ChamadaReconhecerRespostaSerializer(serializers.Serializer):
+    """Lista de nomes reconhecidos na chamada (com confiança e lista de texto)."""
+
+    nomes = ChamadaNomeItemSerializer(many=True)
+    nomes_texto = serializers.ListField(child=serializers.CharField())
 
 
 class ChamadaReconhecerView(APIView):
-    """Reconhece os nomes dos alunos a partir da foto da chamada sem gravar a imagem."""
+    """Reconhece os nomes dos alunos a partir da foto ou PDF da chamada sem gravar o arquivo."""
 
     parser_classes = [MultiPartParser, FormParser]
+    serializer_class = ChamadaReconhecerSerializer
 
     @extend_schema(
         request=ChamadaReconhecerSerializer,
@@ -88,4 +99,11 @@ class ChamadaReconhecerView(APIView):
         except LLMError as erro:
             return Response({"erro": str(erro)}, status=status.HTTP_502_BAD_GATEWAY)
 
-        return Response({"nomes": nomes}, status=status.HTTP_200_OK)
+        nomes_texto = [str(item["nome"]) for item in nomes]
+        return Response(
+            {
+                "nomes": nomes,
+                "nomes_texto": nomes_texto,
+            },
+            status=status.HTTP_200_OK,
+        )
