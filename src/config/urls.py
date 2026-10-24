@@ -24,6 +24,12 @@ def api_root(request, format=None):
             "aluno-pontos-atencao": (
                 f"{reverse('aluno-list', request=request, format=format)}{{id}}/pontos-atencao/"
             ),
+            "aluno-rascunho-pei": (
+                f"{reverse('aluno-list', request=request, format=format)}{{id}}/rascunho-pei/"
+            ),
+            "aluno-rascunho-pei-pdf": (
+                f"{reverse('aluno-list', request=request, format=format)}{{id}}/rascunho-pei/pdf/"
+            ),
             "responsaveis": reverse("responsavel-list", request=request, format=format),
             "consentimentos": reverse("consentimento-list", request=request, format=format),
             "meta-dados": reverse("meta-dados-list", request=request, format=format),

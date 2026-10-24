@@ -7,6 +7,7 @@ from apps.alunos.views import (
     MetaDadosViewSet,
     ResponsavelViewSet,
 )
+from apps.pedagogico.views.pei import AlunoRascunhoPEIPDFView, AlunoRascunhoPEIView
 from apps.pedagogico.views.pontos_atencao import AlunoPontosAtencaoView
 
 router = SimpleRouter()
@@ -20,5 +21,15 @@ urlpatterns = [
         "alunos/<int:id>/pontos-atencao/",
         AlunoPontosAtencaoView.as_view(),
         name="aluno-pontos-atencao",
+    ),
+    path(
+        "alunos/<int:id>/rascunho-pei/",
+        AlunoRascunhoPEIView.as_view(),
+        name="aluno-rascunho-pei",
+    ),
+    path(
+        "alunos/<int:id>/rascunho-pei/pdf/",
+        AlunoRascunhoPEIPDFView.as_view(),
+        name="aluno-rascunho-pei-pdf",
     ),
 ] + router.urls
