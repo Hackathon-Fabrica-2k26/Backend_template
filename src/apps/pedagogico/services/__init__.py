@@ -7,6 +7,7 @@ from .llm import (
     MODELO_PADRAO,
     SYSTEM_PROMPT,
     LLMError,
+    extrair_atividade_multimodal,
     gerar_relatorio,
     sugerir_atividade,
 )
@@ -51,4 +52,5 @@ __all__ = [
     "processar_envio_trabalhos",
     "sugerir_atividade",
     "validar_arquivos_envio",
+    "extrair_atividade_multimodal",
 ]

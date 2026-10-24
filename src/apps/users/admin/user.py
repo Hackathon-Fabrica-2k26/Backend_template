@@ -34,6 +34,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):  # pyright: ignore[reportIncompatibl
     fieldsets = (
         (None, {"fields": ("email", "password", "matricula")}),
         ("Dados pessoais", {"fields": ("name",)}),
+        ("Escola", {"fields": ("escola", "ano")}),
         (
             "Permissões",
             {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")},

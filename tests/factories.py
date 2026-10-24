@@ -4,8 +4,9 @@ from typing import cast
 
 import factory
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
-from apps.alunos.models import Aluno, MetaDados, Responsavel
+from apps.alunos.models import Aluno, Consentimento, MetaDados, Responsavel
 from apps.escolas.models import Config, Escola, Turma
 from apps.items.models import Item
 from apps.pedagogico.models import (
@@ -104,6 +105,20 @@ class AlunoFactory(factory.django.DjangoModelFactory):
 
     nome = factory.declarations.Sequence(lambda n: f"Aluno {n}")
     turma = factory.declarations.SubFactory(TurmaFactory)
+
+    @factory.declarations.PostGeneration
+    def consentimento(self, create, extracted, **kwargs):
+        # Por padrão o aluno de teste tem consentimento ativo (LGPD); use consentimento=False.
+        if create and extracted is not False:
+            Consentimento.objects.create(aluno=self, aceito_em=timezone.now())
+
+
+class ConsentimentoFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Consentimento
+
+    aluno = factory.declarations.SubFactory(AlunoFactory)
+    aceito_em = factory.declarations.LazyFunction(timezone.now)
 
 
 class AtividadeFactory(factory.django.DjangoModelFactory):

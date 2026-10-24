@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.alunos.models import Aluno
+from apps.alunos.services import tem_consentimento_ativo
+from apps.escolas.services.escola_usuario import config_ia_do_usuario
 from apps.pedagogico.models import Relatorio
 from apps.pedagogico.serializers import RelatorioSerializer
 from apps.pedagogico.services import (
@@ -50,6 +52,13 @@ class RelatorioGerarView(APIView):
         if turma is None or not turma.professores.filter(pk=request.user.pk).exists():
             return Response(status=status.HTTP_404_NOT_FOUND)
 
+        # LGPD (Art. 14): sem consentimento ativo do responsável, nada vai à IA.
+        if not tem_consentimento_ativo(aluno):
+            return Response(
+                {"erro": "Aluno sem consentimento ativo do responsável para uso de IA."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         dados = {
             "aluno": aluno.pk,
             "pontos_fortes": entrada.validated_data.get("pontos_fortes", []),
@@ -59,7 +68,7 @@ class RelatorioGerarView(APIView):
         responsavel = aluno.responsavel.nome if aluno.responsavel else ""
         payload = anonimizar(dados, nome_aluno=aluno.nome, nome_responsavel=responsavel)
 
-        config = request.user.escola.config if getattr(request.user, "escola", None) else None
+        config = config_ia_do_usuario(request.user)
         try:
             resposta = gerar_relatorio(
                 payload,

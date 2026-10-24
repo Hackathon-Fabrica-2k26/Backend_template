@@ -10,6 +10,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.escolas.services.escola_usuario import config_ia_do_usuario
 from apps.pedagogico.models import Atividade
 from apps.pedagogico.serializers import (
     AtividadeSerializer,
@@ -89,7 +90,7 @@ class AtividadeViewSet(viewsets.ModelViewSet):
     def gerar_variacoes(self, request, pk=None):
         atividade = self.get_object()
         escola = getattr(request.user, "escola", None) or atividade.turma.escola
-        config = getattr(escola, "config", None) if escola else None
+        config = config_ia_do_usuario(request.user, escola=escola)
 
         try:
             variacoes = gerar_variacoes_atividade(

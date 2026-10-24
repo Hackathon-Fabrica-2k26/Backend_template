@@ -3,6 +3,7 @@ import re
 from rest_framework import serializers
 
 from apps.escolas.models import Turma
+from apps.escolas.services.escola_usuario import escola_do_usuario
 
 MAX_ALUNOS_POR_TURMA = 60
 MAX_TAMANHO_NOME_ALUNO = 120
@@ -46,7 +47,7 @@ class TurmaSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context.get("request")
         user = getattr(request, "user", None)
-        escola_usuario = getattr(user, "escola", None)
+        escola_usuario = escola_do_usuario(user, salvar=False)
 
         if escola_usuario is None and not attrs.get("escola"):
             raise serializers.ValidationError({"escola": "Informe a escola da turma."})
@@ -58,6 +59,6 @@ class TurmaSerializer(serializers.ModelSerializer):
 
         request = self.context.get("request")
         user = getattr(request, "user", None)
-        escola_usuario = getattr(user, "escola", None)
+        escola_usuario = escola_do_usuario(user, salvar=False)
         fields["escola"].required = escola_usuario is None
         return fields

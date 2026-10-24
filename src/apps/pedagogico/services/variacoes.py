@@ -17,6 +17,7 @@ from django.db import transaction
 from safedelete.models import HARD_DELETE
 
 from apps.alunos.models import Aluno
+from apps.alunos.services import alunos_com_consentimento
 from apps.pedagogico.models import Atividade, AtividadeVariacao, PerfilApoio, VariacaoAluno
 
 from .anonimizar import anonimizar
@@ -192,9 +193,7 @@ def _gerar_conteudo_adaptado(
     }
     payload_limpo = _anonimizar_payload_turma(payload_bruto, todos_alunos)
     conteudo_prompt = (
-        PROMPT_VARIACAO_ATIVIDADE
-        + "\n\n"
-        + json.dumps(payload_limpo, ensure_ascii=False)
+        PROMPT_VARIACAO_ATIVIDADE + "\n\n" + json.dumps(payload_limpo, ensure_ascii=False)
     )
 
     try:
@@ -213,10 +212,7 @@ def _gerar_conteudo_adaptado(
         )
 
     conteudo_adaptado = str(
-        dados.get("conteudo")
-        or dados.get("texto_adaptado")
-        or dados.get("texto")
-        or ""
+        dados.get("conteudo") or dados.get("texto_adaptado") or dados.get("texto") or ""
     ).strip()
     if not conteudo_adaptado:
         raise LLMError(
@@ -235,7 +231,8 @@ def gerar_variacoes_atividade(
     if not api_key:
         raise LLMError("Nenhuma credencial de IA configurada para esta escola.")
 
-    alunos_turma = list(
+    # LGPD (Art. 14): só alunos com consentimento ativo passam pela IA.
+    alunos_turma = alunos_com_consentimento(
         Aluno.objects.filter(
             turma=atividade.turma,
             ativo=True,
