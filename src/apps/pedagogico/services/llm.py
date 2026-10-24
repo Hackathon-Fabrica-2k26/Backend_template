@@ -21,7 +21,7 @@ DISCLAIMER = (
     "consultar os professores e a direção da escola."
 )
 
-MODELO_PADRAO = "gemini-2.5-flash"
+MODELO_PADRAO = "gemini-3.8-flash-lite"
 
 # Proíbe qualquer tom/estrutura de diagnóstico clínico.
 SYSTEM_PROMPT = (

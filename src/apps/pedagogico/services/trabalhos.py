@@ -98,7 +98,7 @@ def _obter_credenciais_llm(usuario) -> tuple[str, str]:
     modelo = (
         getattr(config, "modelo", None)
         or getattr(settings, "GEMINI_MODEL", None)
-        or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        or os.environ.get("GEMINI_MODEL", "gemini-3.8-flash-lite")
     )
     return api_key, modelo
 
@@ -110,7 +110,7 @@ def analisar_trabalho_com_gemini(
     nome_arquivo: str,
     nomes_alunos_turma: list[str],
     api_key: str,
-    modelo: str = "gemini-2.5-flash",
+    modelo: str = "gemini-3.8-flash-lite",
 ) -> dict[str, Any]:
     """Envia o trabalho em memória para o Gemini extrair o nome do aluno,
     a descrição detalhada da atividade e a análise pedagógica estruturada.
