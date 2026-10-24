@@ -4,6 +4,7 @@ from rest_framework import status
 from .factories import (
     AlunoFactory,
     MetaDadosFactory,
+    RelatorioFactory,
     ResponsavelFactory,
     TurmaFactory,
 )
@@ -171,3 +172,65 @@ def test_meta_dados_create_perfil_invalido_retorna_400(auth_client, db):
     formulario = {"perfil_disc": "X"}
     response = auth_client.post(reverse("meta-dados-list"), formulario)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+def test_aluno_list_retorna_resumo_com_contagens_e_ignora_soft_deleted(auth_client, db, user):
+    turma = TurmaFactory(professores=[user])
+    aluno_com_relatorios = AlunoFactory(turma=turma, nome="Aluno com Relatórios")
+    aluno_sem_relatorios = AlunoFactory(turma=turma, nome="Aluno sem Relatórios")
+
+    RelatorioFactory(aluno=aluno_com_relatorios)
+    RelatorioFactory(aluno=aluno_com_relatorios)
+    relatorio_deletado = RelatorioFactory(aluno=aluno_com_relatorios)
+    relatorio_deletado.delete()
+
+    response = auth_client.get(LIST_URL, {"turma": turma.pk})
+    assert response.status_code == status.HTTP_200_OK
+
+    dados_alunos = {item["id"]: item for item in response.data["results"]}
+    assert aluno_com_relatorios.pk in dados_alunos
+    assert aluno_sem_relatorios.pk in dados_alunos
+
+    resumo_com = dados_alunos[aluno_com_relatorios.pk]["resumo"]
+    assert resumo_com == {
+        "relatorios": 2,
+        "trabalhos": 0,
+        "observacoes_pendentes": 0,
+    }
+
+    resumo_sem = dados_alunos[aluno_sem_relatorios.pk]["resumo"]
+    assert resumo_sem == {
+        "relatorios": 0,
+        "trabalhos": 0,
+        "observacoes_pendentes": 0,
+    }
+
+
+def test_aluno_detail_retorna_resumo(auth_client, db, user):
+    turma = TurmaFactory(professores=[user])
+    aluno = AlunoFactory(turma=turma)
+    RelatorioFactory(aluno=aluno)
+
+    url = reverse("aluno-detail", args=[aluno.pk])
+    response = auth_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["resumo"] == {
+        "relatorios": 1,
+        "trabalhos": 0,
+        "observacoes_pendentes": 0,
+    }
+
+
+def test_aluno_list_resumo_sem_n_plus_one(auth_client, db, user, django_assert_num_queries):
+    turma = TurmaFactory(professores=[user])
+    alunos = [AlunoFactory(turma=turma) for _ in range(5)]
+    for aluno in alunos:
+        RelatorioFactory(aluno=aluno)
+        RelatorioFactory(aluno=aluno)
+
+    with django_assert_num_queries(3):
+        response = auth_client.get(LIST_URL, {"turma": turma.pk})
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 5
+        for item in response.data["results"]:
+            assert item["resumo"]["relatorios"] == 2
