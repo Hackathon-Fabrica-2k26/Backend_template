@@ -5,9 +5,9 @@ from core.models import BaseModel
 
 class Relatorio(BaseModel):
     TIPOS_RELATORIO = [
-    ("atividade", "Atividade"),
-    ("geral", "Geral"),
-    ("periodo", "Período"),
+        ("atividade", "Atividade"),
+        ("geral", "Geral"),
+        ("periodo", "Período"),
     ]
     dados = models.JSONField("dados", default=dict)
     aluno = models.ForeignKey(
@@ -16,11 +16,20 @@ class Relatorio(BaseModel):
         related_name="relatorios",
         verbose_name="aluno",
     )
+    atividade = models.ForeignKey(
+        "pedagogico.Atividade",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="relatorios",
+        verbose_name="atividade",
+    )
     tipo = models.CharField(
         max_length=10,
         choices=TIPOS_RELATORIO,
         default="geral",
     )
+    disclaimer = models.TextField("disclaimer", blank=True, default="")
 
     class Meta(BaseModel.Meta):
         verbose_name = "relatório"

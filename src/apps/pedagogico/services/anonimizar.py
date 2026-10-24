@@ -40,6 +40,8 @@ CHAVES_PII = frozenset(
         "data_nascimento",
         "data_de_nascimento",
         "nascimento",
+        "matricula",
+        "matrícula",
         "nome",
         "data",
     }
@@ -48,8 +50,8 @@ CHAVES_PII = frozenset(
 # 000.000.000-00, 00000000000, 000 000 000 00...
 CPF_MD = re.compile(r"\d{3}[.\s]?\d{3}[.\s]?\d{3}[-\s]?\d{2}")
 
-# Datas completas no formato dd/mm/aaaa.
-DATA_MD = re.compile(r"\b\d{2}/\d{2}/\d{4}\b")
+# Datas completas no formato dd/mm/aaaa ou aaaa-mm-dd.
+DATA_MD = re.compile(r"\b(?:\d{2}/\d{2}/\d{4}|\d{4}-\d{2}-\d{2})\b")
 
 
 # Menções de responsável no texto corrido: "Responsável: Nome" e variações.

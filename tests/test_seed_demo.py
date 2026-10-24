@@ -7,7 +7,13 @@ from django.test import override_settings
 
 from apps.alunos.models import Aluno, MetaDados, Responsavel
 from apps.escolas.models import Config, Escola, Turma
-from apps.pedagogico.models import Relatorio
+from apps.pedagogico.models import (
+    Atividade,
+    AtividadeVariacao,
+    PerfilApoio,
+    Relatorio,
+    VariacaoAluno,
+)
 
 User = get_user_model()
 
@@ -36,6 +42,10 @@ def test_seed_cria_dados_da_apresentacao(rodar_seed):
     assert Aluno.objects.count() == 6
     assert Responsavel.objects.count() == 6
     assert Relatorio.objects.count() == 2
+    assert Atividade.objects.count() == 1
+    assert AtividadeVariacao.objects.count() == 2
+    assert VariacaoAluno.objects.count() == 3
+    assert PerfilApoio.objects.count() == 2
 
 
 def test_seed_e_idempotente(rodar_seed):
@@ -49,6 +59,9 @@ def test_seed_e_idempotente(rodar_seed):
         "responsaveis": Responsavel.objects.count(),
         "meta_dados": MetaDados.objects.count(),
         "relatorios": Relatorio.objects.count(),
+        "atividades": Atividade.objects.count(),
+        "variacoes": AtividadeVariacao.objects.count(),
+        "perfis_apoio": PerfilApoio.objects.count(),
     }
 
     rodar_seed()
@@ -61,6 +74,9 @@ def test_seed_e_idempotente(rodar_seed):
         "responsaveis": Responsavel.objects.count(),
         "meta_dados": MetaDados.objects.count(),
         "relatorios": Relatorio.objects.count(),
+        "atividades": Atividade.objects.count(),
+        "variacoes": AtividadeVariacao.objects.count(),
+        "perfis_apoio": PerfilApoio.objects.count(),
     }
 
     assert primeira_rodada == segunda_rodada

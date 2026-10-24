@@ -1,5 +1,6 @@
 import pytest
 
+from apps.alunos.models import Aluno
 from apps.escolas.models import Turma
 
 from .factories import (
@@ -103,6 +104,7 @@ def test_turno_e_total_estudantes_conta_apenas_alunos_ativos(auth_client, user):
 
     AlunoFactory(nome="Ativo 1", turma=turma)
     AlunoFactory(nome="Ativo 2", turma=turma)
+    AlunoFactory(nome="Inativo", turma=turma, ativo=False)
     excluido = AlunoFactory(nome="Excluído", turma=turma)
     excluido.delete()
     AlunoFactory(nome="Aluno de Outra Turma", turma=turma_outro)
@@ -116,6 +118,21 @@ def test_turno_e_total_estudantes_conta_apenas_alunos_ativos(auth_client, user):
     assert item["turno"] == "tarde"
     assert item["turno_display"] == "Tarde"
     assert item["total_estudantes"] == 2
+
+
+def test_turma_ano_letivo_default_e_filtro(auth_client, user):
+    from datetime import date
+
+    turma_2025 = TurmaFactory(nome="Turma 2025", ano_letivo=2025, professores=[user])
+    turma_atual = TurmaFactory(nome="Turma Atual", professores=[user])
+
+    assert turma_atual.ano_letivo == date.today().year
+
+    resp = auth_client.get(URL_TURMAS, {"ano_letivo": 2025})
+    assert resp.status_code == 200
+    ids = [t["id"] for t in resp.json()["results"]]
+    assert ids == [turma_2025.id]
+    assert resp.json()["results"][0]["ano_letivo"] == 2025
 
 
 def test_api_key_nao_volta_na_resposta(auth_client, user):
@@ -206,3 +223,144 @@ def test_rotas_no_schema(client):
     assert "/api/configs/" in paths
     assert "/api/escolas/" in paths
     assert "/api/turmas/" in paths
+
+
+def test_criar_turma_com_3_alunos_usa_escola_do_professor_e_retorna_total_estudantes(
+    auth_client, user
+):
+    escola = EscolaFactory(nome="Escola do Professor")
+    user.escola = escola
+    user.save()
+
+    payload = {
+        "nome": "1º Ano A",
+        "ano_letivo": 2026,
+        "turno": "manha",
+        "alunos": ["Alice Silva", "Bruno Costa", "Carla Dias"],
+    }
+    resp = auth_client.post(URL_TURMAS, payload, format="json")
+    assert resp.status_code == 201
+    corpo = resp.json()
+    assert corpo["nome"] == "1º Ano A"
+    assert corpo["ano_letivo"] == 2026
+    assert corpo["turno"] == "manha"
+    assert corpo["turno_display"] == "Manhã"
+    assert corpo["escola"] == escola.id
+    assert corpo["total_estudantes"] == 3
+    assert user.id in corpo["professores"]
+
+    turma = Turma.objects.get(pk=corpo["id"])
+    assert list(turma.alunos.order_by("id").values_list("nome", flat=True)) == [
+        "Alice Silva",
+        "Bruno Costa",
+        "Carla Dias",
+    ]
+
+
+def test_criar_turma_ignora_nomes_vazios_e_duplicados_sem_diferenciar_maiusculas_e_espacos(
+    auth_client, user
+):
+    user.escola = EscolaFactory()
+    user.save()
+
+    payload = {
+        "nome": "2º Ano B",
+        "ano_letivo": 2026,
+        "turno": "tarde",
+        "alunos": [
+            "  Alice   Silva  ",
+            "",
+            "   ",
+            "ALICE silva",
+            "AliceSilva",
+            "Bruno  Costa",
+            "bruno costa ",
+        ],
+    }
+    resp = auth_client.post(URL_TURMAS, payload, format="json")
+    assert resp.status_code == 201
+    corpo = resp.json()
+    assert corpo["total_estudantes"] == 2
+
+    turma = Turma.objects.get(pk=corpo["id"])
+    assert list(turma.alunos.order_by("id").values_list("nome", flat=True)) == [
+        "Alice Silva",
+        "Bruno Costa",
+    ]
+
+
+def test_criar_turma_faz_rollback_se_um_nome_for_invalido_ou_exceder_limite(auth_client, user):
+    user.escola = EscolaFactory()
+    user.save()
+
+    # Nome acima de 120 caracteres após o primeiro aluno válido -> rollback completo
+    resp = auth_client.post(
+        URL_TURMAS,
+        {
+            "nome": "Turma Rollback",
+            "ano_letivo": 2026,
+            "turno": "manha",
+            "alunos": ["Aluno Válido", "X" * 121],
+        },
+        format="json",
+    )
+    assert resp.status_code == 400
+    assert "alunos" in resp.json()
+    assert not Turma.objects.filter(nome="Turma Rollback").exists()
+    assert Aluno.objects.count() == 0
+
+    # Mais de 60 nomes -> 400 e nada criado
+    resp_limite = auth_client.post(
+        URL_TURMAS,
+        {
+            "nome": "Turma Limite",
+            "ano_letivo": 2026,
+            "turno": "manha",
+            "alunos": [f"Aluno {i}" for i in range(61)],
+        },
+        format="json",
+    )
+    assert resp_limite.status_code == 400
+    assert "alunos" in resp_limite.json()
+    assert not Turma.objects.filter(nome="Turma Limite").exists()
+    assert Aluno.objects.count() == 0
+
+
+def test_criar_turma_sem_alunos_continua_funcionando(auth_client, user):
+    user.escola = EscolaFactory()
+    user.save()
+
+    resp = auth_client.post(
+        URL_TURMAS,
+        {"nome": "Turma Sem Alunos", "ano_letivo": 2026, "turno": "noite"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    corpo = resp.json()
+    assert corpo["total_estudantes"] == 0
+    assert Aluno.objects.count() == 0
+
+
+def test_criar_turma_com_alunos_isolamento_por_professor(api_client, auth_client, user):
+    user.escola = EscolaFactory()
+    user.save()
+
+    resp = auth_client.post(
+        URL_TURMAS,
+        {
+            "nome": "Turma Privada",
+            "ano_letivo": 2026,
+            "turno": "manha",
+            "alunos": ["Estudante 1", "Estudante 2"],
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    turma_id = resp.json()["id"]
+
+    outro_professor = UserFactory()
+    api_client.force_authenticate(user=outro_professor)
+    assert api_client.get(f"{URL_TURMAS}{turma_id}/").status_code == 404
+    resp_alunos = api_client.get("/api/alunos/", {"turma": turma_id})
+    assert resp_alunos.status_code == 200
+    assert resp_alunos.json()["count"] == 0
