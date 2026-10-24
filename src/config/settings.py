@@ -132,7 +132,8 @@ REST_FRAMEWORK = {
         "register": "10/hour",
         "login": "5/min",
         "otp_verify": "5/min",
-        "otp_resend": "2/min",},
+        "otp_resend": "2/min",
+    },
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -158,6 +159,11 @@ CACHES = {
             "LOCATION": REDIS_URL,
         }
         if REDIS_URL
+        # Em desenvolvimento (runserver, um processo só) a memória basta e
+        # dispensa o createcachetable; em produção sem Redis, o banco é
+        # compartilhado entre os workers do gunicorn.
+        else {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+        if DEBUG
         else {
             "BACKEND": "django.core.cache.backends.db.DatabaseCache",
             "LOCATION": "django_cache",

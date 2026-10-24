@@ -90,6 +90,13 @@ def test_cache_usa_banco_sem_redis(monkeypatch):
     }
 
 
+def test_cache_usa_memoria_em_desenvolvimento(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="True")
+    assert cfg.CACHES["default"] == {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+
+
 def test_cache_usa_redis_quando_configurado(monkeypatch):
     cfg = recarregar(monkeypatch, SECRET_KEY="x", REDIS_URL="redis://localhost:6379/0")
     assert cfg.CACHES["default"] == {
