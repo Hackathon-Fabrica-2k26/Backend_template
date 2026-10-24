@@ -175,7 +175,7 @@ CELERY_TASK_PUBLISH_RETRY_POLICY = {"max_retries": 1, "interval_start": 0, "inte
 
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
-    "core.gmail_backend.GmailApiEmailBackend",
+    "django.core.mail.backends.console.EmailBackend",
 )
 EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
