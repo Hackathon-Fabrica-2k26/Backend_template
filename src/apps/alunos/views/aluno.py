@@ -1,4 +1,3 @@
-
 import json
 from io import BytesIO
 from xml.sax.saxutils import escape
@@ -73,10 +72,7 @@ class AlunoViewSet(viewsets.ModelViewSet):
     def relatorios_pdf(self, request, pk=None):
         aluno = get_object_or_404(self.get_queryset(), pk=pk)
 
-        relatorios = (
-            Relatorio.objects.filter(aluno=aluno)
-            .order_by("-created_at")
-        )
+        relatorios = Relatorio.objects.filter(aluno=aluno).order_by("-created_at")
 
         buffer = BytesIO()
         documento = SimpleDocTemplate(
@@ -125,9 +121,7 @@ class AlunoViewSet(viewsets.ModelViewSet):
                 if isinstance(valor, (dict, list)):
                     valor = json.dumps(valor, ensure_ascii=False)
 
-                chave_formatada = escape(
-                    str(chave).replace("_", " ").title()
-                )
+                chave_formatada = escape(str(chave).replace("_", " ").title())
                 valor_formatado = escape(str(valor))
 
                 conteudo.append(
@@ -182,9 +176,7 @@ class AlunoViewSet(viewsets.ModelViewSet):
             buffer.getvalue(),
             content_type="application/pdf",
         )
-        resposta["Content-Disposition"] = (
-            f'attachment; filename="relatorios-aluno-{aluno.pk}.pdf"'
-        )
+        resposta["Content-Disposition"] = f'attachment; filename="relatorios-aluno-{aluno.pk}.pdf"'
         return resposta
 
     def get_queryset(self) -> QuerySet[Aluno]:  # type: ignore
