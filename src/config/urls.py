@@ -23,6 +23,7 @@ def api_root(request, format=None):
             "responsaveis": reverse("responsavel-list", request=request, format=format),
             "meta-dados": reverse("meta-dados-list", request=request, format=format),
             "atividades": reverse("atividade-list", request=request, format=format),
+            "trabalhos": reverse("trabalho-list", request=request, format=format),
             "relatorios": reverse("relatorio-list", request=request, format=format),
             "relatorios-gerar": reverse("relatorio-gerar", request=request, format=format),
             "me": reverse("me", request=request, format=format),

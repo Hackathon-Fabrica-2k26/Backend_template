@@ -8,9 +8,10 @@ from django.contrib.auth import get_user_model
 from apps.alunos.models import Aluno, MetaDados, Responsavel
 from apps.escolas.models import Config, Escola, Turma
 from apps.items.models import Item
-from apps.pedagogico.models import Atividade, Relatorio
+from apps.pedagogico.models import Atividade, EnvioTrabalhos, Relatorio, Trabalho
 
 SENHA = os.getenv("SEED_DEMO_PASSWORD") or "Senha-forte-123"
+
 
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -24,6 +25,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     def _create(cls, model_class, *args, **kwargs):
         kwargs.setdefault("password", SENHA)
         return model_class.objects.create_user(*args, **kwargs)
+
 
 class ItemFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -121,3 +123,27 @@ class AtividadeFactory(factory.django.DjangoModelFactory):
             atividade = cast(Atividade, self)
             for relatorio in extracted:
                 atividade.relatorios.add(relatorio)
+
+
+class EnvioTrabalhosFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = EnvioTrabalhos
+
+    atividade = factory.declarations.SubFactory(AtividadeFactory)
+    enviado_por = factory.declarations.SubFactory(UserFactory)
+    total_arquivos = 1
+    status = EnvioTrabalhos.StatusChoices.PROCESSANDO
+
+
+class TrabalhoFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Trabalho
+
+    envio = factory.declarations.SubFactory(EnvioTrabalhosFactory)
+    atividade = factory.declarations.LazyAttribute(lambda o: o.envio.atividade)
+    aluno = factory.declarations.SubFactory(AlunoFactory)
+    nome_lido = factory.declarations.Sequence(lambda n: f"Aluno Lído {n}")
+    confianca = 1.0
+    identificacao = Trabalho.IdentificacaoChoices.CONFIRMADA
+    descricao_ia = "Descrição da atividade pela IA"
+    analise_pedagogica = factory.declarations.LazyFunction(dict)
