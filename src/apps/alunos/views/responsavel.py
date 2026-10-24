@@ -12,7 +12,7 @@ class ResponsavelViewSet(viewsets.ModelViewSet):
     search_fields = ["nome"]
     ordering_fields = ["nome", "created_at"]
 
-    def get_queryset(self) -> QuerySet[Responsavel]: # type: ignore
+    def get_queryset(self) -> QuerySet[Responsavel]:  # type: ignore
         if getattr(self, "swagger_fake_view", False):
             return Responsavel.objects.none()
         return Responsavel.objects.filter(alunos__turma__professores=self.request.user).distinct()

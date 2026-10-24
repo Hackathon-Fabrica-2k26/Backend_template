@@ -85,9 +85,8 @@ def test_relatorio_create_valido(auth_client, db, user):
     assert response.data["aluno"] == aluno.pk
     assert response.data["dados"] == {"resumo": "bom desempenho"}
 
-def test_relatorios_por_aluno_retorna_apenas_relatorios_do_aluno(
-    auth_client, db, user
-):
+
+def test_relatorios_por_aluno_retorna_apenas_relatorios_do_aluno(auth_client, db, user):
     aluno, outro_aluno = _cria_turmas_com_aluno(user)
     meu = RelatorioFactory(aluno=aluno, tipo="atividade")
     RelatorioFactory(aluno=outro_aluno, tipo="geral")
@@ -97,11 +96,7 @@ def test_relatorios_por_aluno_retorna_apenas_relatorios_do_aluno(
 
     assert response.status_code == status.HTTP_200_OK
 
-    resultados = (
-        response.data["results"]
-        if isinstance(response.data, dict)
-        else response.data
-    )
+    resultados = response.data["results"] if isinstance(response.data, dict) else response.data
     ids = [item["id"] for item in resultados]
 
     assert ids == [meu.pk]
@@ -109,9 +104,7 @@ def test_relatorios_por_aluno_retorna_apenas_relatorios_do_aluno(
     assert resultados[0]["disclaimer"] == DISCLAIMER
 
 
-def test_relatorios_por_aluno_de_outra_turma_retorna_404(
-    auth_client, db, user
-):
+def test_relatorios_por_aluno_de_outra_turma_retorna_404(auth_client, db, user):
     _, outro_aluno = _cria_turmas_com_aluno(user)
 
     url = reverse("aluno-relatorios", args=[outro_aluno.pk])
@@ -120,9 +113,7 @@ def test_relatorios_por_aluno_de_outra_turma_retorna_404(
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
-def test_relatorios_por_aluno_filtra_por_tipo(
-    auth_client, db, user
-):
+def test_relatorios_por_aluno_filtra_por_tipo(auth_client, db, user):
     aluno, _ = _cria_turmas_com_aluno(user)
     atividade = RelatorioFactory(aluno=aluno, tipo="atividade")
     RelatorioFactory(aluno=aluno, tipo="geral")
@@ -132,17 +123,11 @@ def test_relatorios_por_aluno_filtra_por_tipo(
 
     assert response.status_code == status.HTTP_200_OK
 
-    resultados = (
-        response.data["results"]
-        if isinstance(response.data, dict)
-        else response.data
-    )
+    resultados = response.data["results"] if isinstance(response.data, dict) else response.data
     assert [item["id"] for item in resultados] == [atividade.pk]
 
 
-def test_relatorios_por_aluno_filtra_por_atividade(
-    auth_client, db, user
-):
+def test_relatorios_por_aluno_filtra_por_atividade(auth_client, db, user):
     aluno, _ = _cria_turmas_com_aluno(user)
     atividade = AtividadeFactory(turma=aluno.turma, criada_por=user)
     relatorio_vinculado = RelatorioFactory(aluno=aluno, atividade=atividade)
@@ -153,22 +138,12 @@ def test_relatorios_por_aluno_filtra_por_atividade(
 
     assert response.status_code == status.HTTP_200_OK
 
-    resultados = (
-        response.data["results"]
-        if isinstance(response.data, dict)
-        else response.data
-    )
-    assert [item["id"] for item in resultados] == [
-        relatorio_vinculado.pk
-    ]
-    assert relatorio_sem_vinculo.pk not in [
-        item["id"] for item in resultados
-    ]
+    resultados = response.data["results"] if isinstance(response.data, dict) else response.data
+    assert [item["id"] for item in resultados] == [relatorio_vinculado.pk]
+    assert relatorio_sem_vinculo.pk not in [item["id"] for item in resultados]
 
 
-def test_pdf_individual_retorna_application_pdf(
-    auth_client, db, user
-):
+def test_pdf_individual_retorna_application_pdf(auth_client, db, user):
     aluno, _ = _cria_turmas_com_aluno(user)
     relatorio = RelatorioFactory(aluno=aluno)
 
@@ -180,9 +155,7 @@ def test_pdf_individual_retorna_application_pdf(
     assert response.content.startswith(b"%PDF-")
 
 
-def test_pdf_consolidado_retorna_application_pdf(
-    auth_client, db, user
-):
+def test_pdf_consolidado_retorna_application_pdf(auth_client, db, user):
     aluno, _ = _cria_turmas_com_aluno(user)
     RelatorioFactory(aluno=aluno, dados={"resumo": "Bom desempenho"})
     RelatorioFactory(aluno=aluno, dados={"resumo": "Boa participação"})
@@ -195,9 +168,7 @@ def test_pdf_consolidado_retorna_application_pdf(
     assert response.content.startswith(b"%PDF-")
 
 
-def test_pdf_consolidado_de_aluno_de_outra_turma_retorna_404(
-    auth_client, db, user
-):
+def test_pdf_consolidado_de_aluno_de_outra_turma_retorna_404(auth_client, db, user):
     _, outro_aluno = _cria_turmas_com_aluno(user)
 
     url = reverse("aluno-relatorios-pdf", args=[outro_aluno.pk])

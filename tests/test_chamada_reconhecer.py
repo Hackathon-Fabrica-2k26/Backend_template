@@ -24,9 +24,7 @@ def _imagem_valida(nome: str = "chamada.jpg", content_type: str = "image/jpeg", 
 
 
 def _pdf_valido(nome: str = "chamada.pdf", tamanho: int = 0):
-    conteudo = (
-        PDF_BYTES if tamanho <= 0 else (PDF_BYTES + b"x" * max(0, tamanho - len(PDF_BYTES)))
-    )
+    conteudo = PDF_BYTES if tamanho <= 0 else (PDF_BYTES + b"x" * max(0, tamanho - len(PDF_BYTES)))
     return SimpleUploadedFile(nome, conteudo, content_type="application/pdf")
 
 

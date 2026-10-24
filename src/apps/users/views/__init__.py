@@ -8,8 +8,8 @@ from .register import RegisterView
 __all__ = [
     "MeView",
     "MeResumoView",
-    "RegisterView", 
+    "RegisterView",
     "OTPVerifyView",
     "OTPResendView",
     "LoginView",
-    ]
+]

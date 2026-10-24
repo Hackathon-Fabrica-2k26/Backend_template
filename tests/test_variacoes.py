@@ -192,9 +192,7 @@ def test_editar_conteudo_marca_editada_manual_e_aprovar_variacao(auth_client, us
     assert atividade.status == Atividade.StatusChoices.APROVADA
 
 
-def test_pdf_variacao_contem_rotulo_e_titulo_sem_nome_de_aluno_ou_condicao(
-    auth_client, user
-):
+def test_pdf_variacao_contem_rotulo_e_titulo_sem_nome_de_aluno_ou_condicao(auth_client, user):
     turma = TurmaFactory(professores=[user])
     aluno = AlunoFactory(turma=turma, nome="Gabriel Ribeiro")
     PerfilApoioFactory(

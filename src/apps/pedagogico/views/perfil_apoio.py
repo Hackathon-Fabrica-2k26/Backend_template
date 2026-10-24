@@ -15,6 +15,4 @@ class PerfilApoioViewSet(viewsets.ModelViewSet):
     def get_queryset(self) -> QuerySet[PerfilApoio]:  # type: ignore
         if getattr(self, "swagger_fake_view", False):
             return PerfilApoio.objects.none()
-        return PerfilApoio.objects.filter(
-            aluno__turma__professores=self.request.user
-        ).distinct()
+        return PerfilApoio.objects.filter(aluno__turma__professores=self.request.user).distinct()

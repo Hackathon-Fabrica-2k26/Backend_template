@@ -2,6 +2,7 @@ from rest_framework.routers import SimpleRouter
 
 from apps.alunos.views import (
     AlunoViewSet,
+    ConsentimentoViewSet,
     MetaDadosViewSet,
     ResponsavelViewSet,
 )
@@ -9,6 +10,7 @@ from apps.alunos.views import (
 router = SimpleRouter()
 router.register("alunos", AlunoViewSet, basename="aluno")
 router.register("responsaveis", ResponsavelViewSet, basename="responsavel")
+router.register("consentimentos", ConsentimentoViewSet, basename="consentimento")
 router.register("meta-dados", MetaDadosViewSet, basename="meta-dados")
 
 urlpatterns = router.urls
