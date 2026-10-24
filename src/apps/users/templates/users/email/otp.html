@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>{{ titulo }}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+    @media (max-width: 480px) {
+      .cartao { padding: 28px 20px !important; }
+      .digito { width: 48px !important; height: 58px !important; font-size: 28px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#F7F7F1;">
+  <!-- Pré-cabeçalho: aparece na lista da caixa de entrada. -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:#F7F7F1;">
+    Seu código do Marsupi é {{ codigo }}. Ele vale por {{ minutos }} minutos.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F7F7F1;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
+
+          <!-- Logo pequena no canto -->
+          <tr>
+            <td align="left" style="padding:0 4px 20px;">
+              <img src="{{ logo_src }}" width="80" height="32" alt="Marsupi" style="display:block; border:0; outline:none; text-decoration:none; height:32px; width:auto;">
+            </td>
+          </tr>
+
+          <tr>
+            <td class="cartao" style="background-color:#FFFFFF; border:1px solid #D0DFD2; border-radius:12px; padding:36px 32px; font-family:'Poppins', Arial, Helvetica, sans-serif; color:#263D35;">
+
+              <h1 style="margin:0; font-size:24px; line-height:1.25; font-weight:600; color:#263D35;">
+                {{ titulo }}
+              </h1>
+              <p style="margin:12px 0 0; font-size:15px; line-height:1.5; color:#263D35;">
+                Olá{% if nome %}, {{ nome }}{% endif %}! Use o código abaixo para entrar no Marsupi.
+              </p>
+
+              <p style="margin:28px 0 8px; font-size:13px; line-height:1.4; color:#52695F;">
+                Código de verificação
+              </p>
+
+              <!-- Um quadro por dígito, como na tela de verificação -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;">
+                <tr>
+                  {% for digito in digitos %}
+                  <td class="digito" align="center" valign="middle" width="56" height="64" style="width:56px; height:64px; border:2px solid #356B5A; border-radius:12px; background-color:#F7F7F1; font-family:'Poppins', Arial, Helvetica, sans-serif; font-size:32px; font-weight:600; line-height:64px; color:#263D35; letter-spacing:0;">{{ digito }}</td>
+                  {% if not forloop.last %}<td width="10" style="width:10px; font-size:0; line-height:0;">&nbsp;</td>{% endif %}
+                  {% endfor %}
+                </tr>
+              </table>
+
+              <!-- Trilha de pontos, eco da tela do front -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:14px;">
+                <tr>
+                  {% for digito in digitos %}
+                  <td width="56" align="center" style="width:56px; font-size:0; line-height:0;">
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:#A9C7B4;"></span>
+                  </td>
+                  {% if not forloop.last %}<td width="10" style="width:10px; font-size:0;">&nbsp;</td>{% endif %}
+                  {% endfor %}
+                </tr>
+              </table>
+
+              <p style="margin:28px 0 0; padding:12px 16px; border-radius:12px; background-color:#FBF1E3; font-size:14px; line-height:1.5; color:#263D35;">
+                O código vale por <strong style="font-weight:600;">{{ minutos }} minutos</strong> e só funciona uma vez.
+              </p>
+
+              <p style="margin:24px 0 0; font-size:13px; line-height:1.5; color:#52695F;">
+                Não pediu este código? Ignore este e-mail. Ninguém entra na sua conta sem ele.
+                Nunca compartilhe o código com outra pessoa, nem com a equipe do Marsupi.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Faixa de cores da marca -->
+          <tr>
+            <td style="padding:0 12px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td height="4" width="60%" style="height:4px; background-color:#356B5A; font-size:0; line-height:0; border-radius:0 0 0 4px;">&nbsp;</td>
+                  <td height="4" width="25%" style="height:4px; background-color:#A9C7B4; font-size:0; line-height:0;">&nbsp;</td>
+                  <td height="4" width="15%" style="height:4px; background-color:#E3B477; font-size:0; line-height:0; border-radius:0 0 4px 0;">&nbsp;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:20px 8px 0; font-family:'Poppins', Arial, Helvetica, sans-serif; font-size:12px; line-height:1.5; color:#6C8277;">
+              Marsupi · copiloto pedagógico da professora<br>
+              E-mail automático, não precisa responder.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

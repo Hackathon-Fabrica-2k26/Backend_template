@@ -1,0 +1,12 @@
+{{ titulo }}
+
+Olá{% if nome %}, {{ nome }}{% endif %}! Use o código abaixo para entrar no Marsupi:
+
+    {{ codigo }}
+
+O código vale por {{ minutos }} minutos e só funciona uma vez.
+
+Não pediu este código? Ignore este e-mail. Ninguém entra na sua conta sem ele.
+Nunca compartilhe o código com outra pessoa, nem com a equipe do Marsupi.
+
+Marsupi · copiloto pedagógico da professora

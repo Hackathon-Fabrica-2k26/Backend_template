@@ -1,5 +1,3 @@
-
-from django.core.mail import send_mail
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
@@ -7,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..services.otp import resend_otp
+from ..services.otp_email import enviar_email_otp
 
 
 class OTPResendView(APIView):
@@ -30,13 +29,7 @@ class OTPResendView(APIView):
             )
 
         def send_code(user, code):
-            send_mail(
-                subject="Seu novo código de verificação",
-                message=f"Seu código de verificação é: {code}",
-                from_email=None,
-                recipient_list=[user.email],
-                fail_silently=False,
-            )
+            enviar_email_otp(user, code, reenvio=True)
 
         try:
             success, error = resend_otp(otp_token, send_code)

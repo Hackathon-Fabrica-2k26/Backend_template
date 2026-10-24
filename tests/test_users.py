@@ -123,6 +123,7 @@ def test_registro_tem_limite_de_requisicoes(api_client):
     assert codigos[:10] == [201] * 10
     assert 429 in codigos[10:]
 
+
 @pytest.mark.django_db
 def test_login_por_matricula(api_client, user):
     resp = api_client.post(
@@ -137,6 +138,7 @@ def test_login_por_matricula(api_client, user):
     assert "email" in dados
     assert "access" not in dados
     assert "refresh" not in dados
+
 
 @pytest.mark.django_db
 def test_me_sem_token(api_client):
@@ -195,7 +197,7 @@ def test_otp_codigo_correto_retorna_tokens(api_client, user):
 
     assert login.status_code == 200
 
-    codigo = mail.outbox[-1].body.rsplit(":", 1)[-1].strip()
+    codigo = mail.outbox[-1].subject.split(" ", 1)[0]
 
     resp = api_client.post(
         "/api/auth/otp/verify/",
@@ -299,3 +301,19 @@ def test_editar_perfil_usuario(api_client, user):
     user.refresh_from_db()
     assert user.name == "Professora Atualizada"
     assert user.email == "atualizada@escola.com"
+
+
+def test_email_otp_tem_html_com_digitos_e_logo_embutida(api_client, user):
+    api_client.post("/api/auth/login/", {"matricula": user.matricula, "password": SENHA})
+
+    email = mail.outbox[-1]
+    codigo = email.subject.split(" ", 1)[0]
+    assert codigo.isdigit()
+    assert codigo in email.body
+    html, tipo = email.alternatives[0]
+    assert tipo == "text/html"
+    assert "cid:logo-marsupi" in html
+    for digito in codigo:
+        assert f">{digito}</td>" in html
+    anexos = email.message().get_payload()
+    assert any(parte.get("Content-ID") == "<logo-marsupi>" for parte in anexos)
