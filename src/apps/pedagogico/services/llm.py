@@ -6,6 +6,7 @@ diretamente da memória, sem salvar os arquivos em disco.
 """
 
 import json
+import logging
 import re
 from pathlib import Path
 
@@ -19,6 +20,8 @@ DISCLAIMER = (
     "pelo professor e não constitui diagnóstico. Recomendamos também "
     "consultar os professores e a direção da escola."
 )
+
+logger = logging.getLogger(__name__)
 
 MODELO_PADRAO = "gemini-3.8-flash-lite"
 
@@ -263,6 +266,7 @@ def _pedir_ao_gemini(
     modelo: str,
 ) -> str:
     """Faz a chamada à API do Gemini e devolve o texto da resposta."""
+    modelo = normalizar_modelo(modelo)
     try:
         from google import genai
 
@@ -277,9 +281,16 @@ def _pedir_ao_gemini(
             ),
         )
     except Exception as erro:
+        # Nunca registra a chave nem o conteúdo (pode ter dados de alunos).
+        logger.warning(
+            "Falha ao chamar o Gemini (modelo=%s): %s: %s", modelo, type(erro).__name__, erro
+        )
         raise LLMError() from erro
 
-    return resposta.text or ""
+    texto = resposta.text or ""
+    if not texto:
+        logger.warning("Gemini devolveu resposta vazia (modelo=%s)", modelo)
+    return texto
 
 
 def _extrair_json(texto: str) -> dict:
