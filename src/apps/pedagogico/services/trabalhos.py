@@ -11,6 +11,7 @@ from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 
 from apps.alunos.models import Aluno
+from apps.alunos.services import alunos_com_consentimento
 from apps.pedagogico.models import Atividade, EnvioTrabalhos, Relatorio, Trabalho
 from apps.pedagogico.services.llm import DISCLAIMER, LLMError
 
@@ -286,7 +287,9 @@ def processar_envio_trabalhos(
 
     turma = atividade.turma
     alunos_turma = list(Aluno.objects.filter(turma=turma)) if turma else []
-    nomes_alunos = [a.nome for a in alunos_turma]
+    # LGPD (Art. 14): só nomes de alunos com consentimento vão ao prompt da IA.
+    ids_com_consentimento = {a.pk for a in alunos_com_consentimento(alunos_turma)}
+    nomes_alunos = [a.nome for a in alunos_turma if a.pk in ids_com_consentimento]
 
     envio = EnvioTrabalhos.objects.create(
         atividade=atividade,
@@ -313,6 +316,17 @@ def processar_envio_trabalhos(
         analise_pedagogica = resultado_ia["analise_pedagogica"]
 
         aluno_casado, confianca, identificacao = casar_nome_aluno(nome_lido, alunos_turma)
+
+        if aluno_casado and aluno_casado.pk not in ids_com_consentimento:
+            # Sem consentimento: descarta a análise e não vincula ao aluno.
+            Trabalho.objects.create(
+                envio=envio,
+                atividade=atividade,
+                aluno=None,
+                identificacao=Trabalho.IdentificacaoChoices.SEM_CONSENTIMENTO,
+                status=Trabalho.StatusChoices.ANALISADO,
+            )
+            continue
 
         trabalho = Trabalho.objects.create(
             envio=envio,

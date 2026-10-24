@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.alunos.models import Aluno
+from apps.alunos.services import tem_consentimento_ativo
 from apps.pedagogico.models import Trabalho
 
 
@@ -67,4 +68,8 @@ class TrabalhoConfirmacaoSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     "O aluno informado não pertence à turma desta atividade."
                 )
+        if not tem_consentimento_ativo(aluno):
+            raise serializers.ValidationError(
+                "Aluno sem consentimento ativo do responsável para uso de IA."
+            )
         return aluno
