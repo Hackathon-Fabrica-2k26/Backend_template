@@ -33,6 +33,21 @@ def api_root(request, format=None):
             "aluno-rascunho-pei-pdf": (
                 f"{reverse('aluno-list', request=request, format=format)}{{id}}/rascunho-pei/pdf/"
             ),
+            "aluno-codigo-acesso": (
+                f"{reverse('aluno-list', request=request, format=format)}{{id}}/codigo-acesso/"
+            ),
+            "aluno-codigo-acesso-revogar": (
+                f"{reverse('aluno-list', request=request, format=format)}"
+                f"{{id}}/codigo-acesso/revogar/"
+            ),
+            "responsavel-acesso": reverse("responsavel-acesso", request=request, format=format),
+            "responsavel-aluno": reverse("responsavel-aluno", request=request, format=format),
+            "responsavel-consentimento": reverse(
+                "responsavel-consentimento", request=request, format=format
+            ),
+            "responsavel-consentimento-revogar": reverse(
+                "responsavel-consentimento-revogar", request=request, format=format
+            ),
             "responsaveis": reverse("responsavel-list", request=request, format=format),
             "consentimentos": reverse("consentimento-list", request=request, format=format),
             "meta-dados": reverse("meta-dados-list", request=request, format=format),

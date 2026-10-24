@@ -40,6 +40,14 @@ class Aluno(BaseModel):
         verbose_name="responsável",
     )
 
+    responsaveis = models.ManyToManyField(
+        "Responsavel",
+        through="AlunoResponsavel",
+        related_name="alunos_vinculados",
+        blank=True,
+        verbose_name="responsáveis",
+    )
+
     turma = models.ForeignKey(
         "escolas.Turma",
         on_delete=models.CASCADE,

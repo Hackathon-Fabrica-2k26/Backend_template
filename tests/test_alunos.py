@@ -169,7 +169,6 @@ def test_responsavel_create_valido(auth_client, db):
         "email": "resp@example.com",
         "telefone": "11987654321",
         "cpf": "12345678900",
-        "endereco": "Rua X",
     }
     response = auth_client.post(reverse("responsavel-list"), formulario)
     assert response.status_code == status.HTTP_201_CREATED

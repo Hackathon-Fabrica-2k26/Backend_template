@@ -37,7 +37,6 @@ def _criar_cenario_professor(user):
     responsavel = Responsavel.objects.create(
         nome="Marcos Ribeiro",
         telefone="47999991111",
-        endereco="Rua das Palmeiras, 42",
     )
     aluno = Aluno.objects.create(
         nome="Helena Ribeiro",
