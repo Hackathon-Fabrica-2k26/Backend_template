@@ -149,6 +149,7 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Documentação da API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 REDIS_URL = os.getenv("REDIS_URL", "")
@@ -191,3 +192,11 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").lower() == "true"
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Marsupi <no-reply@marsupi.local>")
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = 21 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
+
+FILE_UPLOAD_HANDLERS = [
+    "core.upload_handlers.LimiteUploadHandler",
+    "django.core.files.uploadhandler.MemoryFileUploadHandler",
+]
