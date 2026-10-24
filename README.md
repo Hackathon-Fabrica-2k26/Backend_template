@@ -30,6 +30,7 @@ python src/manage.py runserver
 | `dev` / `runserver` | servidor de desenvolvimento |
 | `migrate` / `makemigrations` | migrações |
 | `createsuperuser` | cria superusuário |
+| `populate` | popula o banco com dados essenciais e mockados (idempotente) |
 | `seed-demo` | cria os dados da apresentação (idempotente) |
 | `shell` | shell Django |
 | `startapp <nome>` | novo app |
@@ -66,9 +67,41 @@ Cria: 1 escola + config, 1 professor, 2 turmas, 6 alunos (com responsável e per
 |---|---|
 | E-mail | `professor@demo.com` |
 | Matrícula | `DEMO0001` |
-| Senha | `demo-senha-123` |
+| Senha | `SEED_DEMO_PASSWORD` (padrão `demo-senha-123` em desenvolvimento) |
+
+A senha e a `api_key` demo vêm das variáveis de ambiente; o padrão público (`demo-senha-123` / `demo-api-key-troque-no-admin`) vale **só quando `DEBUG=True`**. Com `DEBUG=False` e sem as variáveis, o comando aborta — isso evita subir em deploy (Dokku) uma conta de professor com senha pública:
+
+```bash
+SEED_DEMO_PASSWORD=minha-senha SEED_DEMO_API_KEY=minha-chave pdm run seed-demo
+```
 
 São dados de apresentação, claramente fictícios. Troque a `api_key` da `Config` no admin antes de chamar a LLM de verdade.
+
+## População do Banco de Dados (Database Seeding)
+Comando customizado e idempotente para popular o banco de dados com dados essenciais de catálogo e dados mockados realistas para desenvolvimento e testes locais.
+
+```bash
+# Execução padrão via PDM (ou python src/manage.py seed_db)
+pdm run populate
+
+# Execução limpando dados anteriores antes de semear
+python src/manage.py seed_db --clear
+
+# Execução customizando o volume de dados mockados
+python src/manage.py seed_db --count 20
+python src/manage.py seed_db --users 10 --escolas 3 --turmas-por-escola 2 --alunos-por-turma 5
+```
+
+### Credenciais geradas por padrão:
+| Perfil | E-mail | Matrícula | Senha |
+|---|---|---|---|
+| **Superusuário** | `admin@exemplo.com` | `ADMIN0001` | `admin123` |
+| **Professor** | `professor1@exemplo.com` | `PROF0001` | `senha123` |
+
+Variáveis de ambiente opcionais (`.env`):
+- `SEED_ADMIN_EMAIL`: e-mail do superusuário gerado (padrão: `admin@exemplo.com`).
+- `SEED_ADMIN_PASSWORD`: senha do superusuário gerado (padrão: `admin123`).
+- `SEED_USER_PASSWORD`: senha comum atribuída aos professores mockados (padrão: `senha123`).
 
 ## Endpoints
 | Rota | Descrição |
@@ -110,9 +143,13 @@ Nos testes automatizados, use a fixture `auth_client` (`force_authenticate`).
 | `EMAIL_USE_SSL` | `False` | ativa SSL direto |
 | `EMAIL_TIMEOUT` | `10` | timeout de conexão SMTP em segundos |
 | `DEFAULT_FROM_EMAIL` | `Marsupi <no-reply@marsupi.local>` | remetente padrão dos e-mails (OTP) |
+| `SEED_DEMO_PASSWORD` | vazio | senha do professor demo do `seed_demo`; padrão `demo-senha-123` só com `DEBUG=True`, obrigatória fora dele |
+| `SEED_DEMO_API_KEY` | vazio | `api_key` demo da `Config` criada pelo `seed_demo`; mesmo comportamento da senha |
 
 ## Deploy
 O `Procfile` define `release`, `web` (gunicorn) e `worker` (Celery). Configure `SECRET_KEY` (antes do primeiro push), `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `DATABASE_URL` e `REDIS_URL` no ambiente.
+
+O cache (usado pelo OTP e pelo rate limit) é compartilhado entre os workers do gunicorn: usa o Redis quando `REDIS_URL` está definida ou, por padrão, o próprio banco de dados (`DatabaseCache` na tabela `django_cache`, criada automaticamente no passo `release` com `python src/manage.py createcachetable`).
 
 Para o código OTP chegar por e-mail em produção, configure também as variáveis de SMTP:
 ```bash
