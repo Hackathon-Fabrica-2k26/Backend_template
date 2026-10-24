@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.alunos.models import Aluno
+from apps.escolas.services.escola_usuario import config_ia_do_usuario
 from apps.pedagogico.services.llm import MODELO_PADRAO, LLMError
 from apps.pedagogico.services.pontos_atencao import gerar_pontos_atencao_aluno
 
@@ -75,7 +76,7 @@ class AlunoPontosAtencaoView(APIView):
         escola = getattr(request.user, "escola", None) or (
             aluno.turma.escola if aluno.turma else None
         )
-        config = getattr(escola, "config", None) if escola else None
+        config = config_ia_do_usuario(request.user, escola=escola)
 
         try:
             resultado = gerar_pontos_atencao_aluno(

@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.escolas.models import Turma
+from apps.escolas.services.escola_usuario import config_ia_do_usuario
 from apps.pedagogico.services import (
     MODELO_PADRAO,
     ExtracaoError,
@@ -74,8 +75,7 @@ class AtividadeExtrairView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        escola = getattr(request.user, "escola", None)
-        config = getattr(escola, "config", None) if escola else None
+        config = config_ia_do_usuario(request.user)
         sugestao = sugerir_atividade(
             texto_original=texto_original,
             api_key=config.api_key if config else "",

@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.escolas.services import LLMError, reconhecer_nomes
+from apps.escolas.services.escola_usuario import config_ia_do_usuario
 
 TAMANHO_MAXIMO_BYTES = 10 * 1024 * 1024  # 10 MB
 
@@ -93,7 +94,7 @@ class ChamadaReconhecerView(APIView):
         imagem_bytes = arquivo.read()
         mime = contexto["mime"]
 
-        config = request.user.escola.config if getattr(request.user, "escola", None) else None
+        config = config_ia_do_usuario(request.user)
         try:
             nomes = reconhecer_nomes(imagem_bytes, mime, config)
         except LLMError as erro:

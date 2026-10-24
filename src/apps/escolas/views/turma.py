@@ -10,6 +10,7 @@ from apps.alunos.models import Aluno
 from apps.escolas.models import Turma
 from apps.escolas.serializers import TurmaSerializer
 from apps.escolas.serializers.turma import limpar_nome_aluno
+from apps.escolas.services.escola_usuario import escola_do_usuario
 
 
 @extend_schema_view(
@@ -42,7 +43,7 @@ class TurmaViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def perform_create(self, serializer):
         user = self.request.user
-        escola = getattr(user, "escola", None)
+        escola = escola_do_usuario(user)
         nomes_brutos = serializer.validated_data.pop("alunos", None) or []
 
         if escola is not None:

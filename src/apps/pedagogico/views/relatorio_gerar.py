@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from apps.alunos.models import Aluno
 from apps.alunos.services import tem_consentimento_ativo
+from apps.escolas.services.escola_usuario import config_ia_do_usuario
 from apps.pedagogico.models import Relatorio
 from apps.pedagogico.serializers import RelatorioSerializer
 from apps.pedagogico.services import (
@@ -67,7 +68,7 @@ class RelatorioGerarView(APIView):
         responsavel = aluno.responsavel.nome if aluno.responsavel else ""
         payload = anonimizar(dados, nome_aluno=aluno.nome, nome_responsavel=responsavel)
 
-        config = request.user.escola.config if getattr(request.user, "escola", None) else None
+        config = config_ia_do_usuario(request.user)
         try:
             resposta = gerar_relatorio(
                 payload,
