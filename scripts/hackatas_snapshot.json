@@ -1,0 +1,18 @@
+{
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/25": "25:feat: gerar e aprovar varia├º├Áes da atividade:Ready:",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/41": "41:feat: relat├│rio por aluno e por atividade com exporta├º├úo em PDF:In Progress:Davi-Prussek",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/26": "26:feat: progresso do professor (painel de autonomia):Backlog:",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/46": "46:feat: rascunho de PEI:Backlog:",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/39": "39:feat: refazer Atividade por turma + PerfilApoio (base do fluxo novo):Ready:",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/45": "45:feat: pontos de aten├º├úo:Backlog:",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/40": "40:feat: envio de trabalhos por foto:Ready:",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/42": "42:feat: c├│digo do aluno e acesso do respons├ível:Backlog:",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/38": "38:feat: cadastrar alunos pela foto da chamada (OCR):Ready:",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/60": "60:feat: resumo do aluno na listagem:In Progress:mklamaral",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/58": "58:feat: ano letivo na turma:In Progress:Mateus2411",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/43": "43:feat: consentimento do respons├ível:Backlog:",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/59": "59:feat: matr├¡cula e nascimento do aluno:In Progress:Mateus2411",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/37": "37:fix: senha do seed_demo via vari├ível de ambiente:In Progress:Mateus2411",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/61": "61:feat: criar atividade a partir de arquivo:Ready:",
+  "https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/44": "44:feat: laudo vira perfil de apoio:Backlog:"
+}

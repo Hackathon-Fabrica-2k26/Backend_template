@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout *)",
+      "Bash(git restore *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix: senha do seed_demo via variavel de ambiente *)"
+    ]
+  },
+  "disabledMcpjsonServers": [
+    "supabase"
+  ]
+}

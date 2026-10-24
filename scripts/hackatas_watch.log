@@ -1,0 +1,26 @@
+2026-10-23 17:56:42 | EXCECAO: The property 'type' cannot be found on this object. Verify that the property exists.
+2026-10-23 17:56:56 | Primeira execucao: snapshot criado com 0 task(s) ativa(s) no backend.
+2026-10-23 17:57:51 | EXCECAO: The property 'assignees' cannot be found on this object. Verify that the property exists.
+2026-10-23 17:58:06 | NOVA TASK BACKEND: [Ready] #26 feat: progresso do professor (painel de autonomia) -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/26
+2026-10-23 17:58:06 | NOVA TASK BACKEND: [Ready] #25 feat: refinar atividade com LLM (ciclo de autonomia) -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/25
+2026-10-23 17:58:06 | NOVA TASK BACKEND: [In Progress] #32 feat: professor que cria a turma entra como professor dela -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/32
+2026-10-23 20:59:22 | NOVA TASK BACKEND: [Ready] #60 feat: resumo do aluno na listagem -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/60
+2026-10-23 20:59:22 | NOVA TASK BACKEND: [Ready] #61 feat: criar atividade a partir de arquivo -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/61
+2026-10-23 20:59:22 | NOVA TASK BACKEND: [Backlog] #42 feat: c├│digo do aluno e acesso do respons├ível -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/42
+2026-10-23 20:59:22 | NOVA TASK BACKEND: [Ready] #39 feat: refazer Atividade por turma + PerfilApoio (base do fluxo novo) -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/39
+2026-10-23 20:59:22 | NOVA TASK BACKEND: [Backlog] #46 feat: rascunho de PEI -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/46
+2026-10-23 20:59:22 | NOVA TASK BACKEND: [Backlog] #44 feat: laudo vira perfil de apoio -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/44
+2026-10-23 20:59:23 | NOVA TASK BACKEND: [Ready] #59 feat: matr├¡cula e nascimento do aluno -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/59
+2026-10-23 20:59:23 | NOVA TASK BACKEND: [Ready] #38 feat: cadastrar alunos pela foto da chamada (OCR) -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/38
+2026-10-23 20:59:23 | NOVA TASK BACKEND: [Ready] #40 feat: envio de trabalhos por foto -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/40
+2026-10-23 20:59:23 | NOVA TASK BACKEND: [Ready] #58 feat: ano letivo na turma -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/58
+2026-10-23 20:59:23 | NOVA TASK BACKEND: [Backlog] #43 feat: consentimento do respons├ível -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/43
+2026-10-23 20:59:23 | NOVA TASK BACKEND: [Backlog] #45 feat: pontos de aten├º├úo -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/45
+2026-10-23 20:59:23 | NOVA TASK BACKEND: [In Progress] #41 feat: relat├│rio por aluno e por atividade com exporta├º├úo em PDF -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/41
+2026-10-23 20:59:23 | SAIU (Done ou removida): [https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/32, 32:feat: professor que cria a turma entra como professor dela:In Progress:Davi-Prussek].Key
+2026-10-23 20:59:23 | MUDOU: #26 feat: progresso do professor (painel de autonomia) agora [Backlog] -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/26
+2026-10-23 20:59:23 | MUDOU: #25 feat: gerar e aprovar varia├º├Áes da atividade agora [Ready] -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/25
+2026-10-23 21:58:33 | NOVA TASK BACKEND: [In Progress] #37 fix: senha do seed_demo via vari├ível de ambiente -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/37
+2026-10-23 21:58:34 | MUDOU: #60 feat: resumo do aluno na listagem agora [In Progress] -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/60
+2026-10-23 21:58:34 | MUDOU: #58 feat: ano letivo na turma agora [In Progress] -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/58
+2026-10-23 21:58:34 | MUDOU: #59 feat: matr├¡cula e nascimento do aluno agora [In Progress] -> https://github.com/Hackathon-Fabrica-2k26/Backend_template/issues/59

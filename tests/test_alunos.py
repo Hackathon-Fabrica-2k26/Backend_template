@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 
 from .factories import (
@@ -96,6 +97,30 @@ def test_aluno_create_valido(auth_client, db, user):
     response = auth_client.post(LIST_URL, formulario, format="json")
     assert response.status_code == status.HTTP_201_CREATED
     assert response.data["nome"] == "Novo Aluno"
+    assert response.data["matricula"] == ""
+    assert response.data["nascimento"] is None
+    assert response.data["idade"] is None
+    assert response.data["ativo"] is True
+
+
+def test_aluno_create_com_matricula_e_nascimento_calcula_idade(auth_client, db, user):
+    turma = TurmaFactory(professores=[user])
+    nascimento = timezone.localdate().replace(year=timezone.localdate().year - 12, month=1, day=1)
+    formulario = {
+        "nome": "Aluno Identificado",
+        "matricula": "ALUNO-123",
+        "nascimento": nascimento.isoformat(),
+        "ativo": False,
+        "turma": turma.pk,
+    }
+
+    response = auth_client.post(LIST_URL, formulario, format="json")
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["matricula"] == "ALUNO-123"
+    assert response.data["nascimento"] == nascimento.isoformat()
+    assert response.data["idade"] == 12
+    assert response.data["ativo"] is False
 
 
 def test_responsavel_list_exige_autenticacao(api_client, db):

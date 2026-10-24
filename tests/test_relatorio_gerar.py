@@ -1,6 +1,7 @@
 """Testes do endpoint POST /api/relatorios/gerar/ (view + LLM mockada)."""
 
 from apps.pedagogico.models import Atividade, Relatorio
+from apps.pedagogico.services.anonimizar import anonimizar
 
 from .factories import AlunoFactory, EscolaFactory, ResponsavelFactory, TurmaFactory
 
@@ -111,6 +112,20 @@ def test_gerar_relatorio_payload_nao_vaza_pii(auth_client, db, user, monkeypatch
     # A troca pelo codinome foi real: o nome não fica mascarado em partes.
     payload = response.json()["payload_enviado"]
     assert payload["pontos_fortes"] == [f"{payload['codinome_aluno']} é criativo"]
+
+
+def test_anonimizar_remove_matricula_e_nascimento():
+    payload = anonimizar(
+        {
+            "dados": {
+                "matricula": "ALUNO-123",
+                "nascimento": "2017-03-10",
+                "pontos_fortes": ["Memória visual"],
+            }
+        }
+    )
+
+    assert payload == {"dados": {"pontos_fortes": ["Memória visual"]}}
 
 
 def test_gerar_relatorio_com_llm_fora_do_ar_retorna_502(auth_client, db, user, monkeypatch):

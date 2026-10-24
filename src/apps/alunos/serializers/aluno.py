@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.escolas.models import Turma
@@ -6,6 +7,7 @@ from ..models import Aluno
 
 
 class AlunoSerializer(serializers.ModelSerializer):
+    idade = serializers.SerializerMethodField()
     turma = serializers.PrimaryKeyRelatedField(
         queryset=Turma.objects.all(),
         required=True,
@@ -14,8 +16,27 @@ class AlunoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Aluno
-        fields = ["id", "nome", "turma", "meta_dados", "responsavel"]
+        fields = [
+            "id",
+            "nome",
+            "matricula",
+            "nascimento",
+            "idade",
+            "ativo",
+            "turma",
+            "meta_dados",
+            "responsavel",
+        ]
         read_only_fields = ["id"]
+
+    def get_idade(self, obj):
+        if obj.nascimento is None:
+            return None
+
+        hoje = timezone.localdate()
+        return hoje.year - obj.nascimento.year - (
+            (hoje.month, hoje.day) < (obj.nascimento.month, obj.nascimento.day)
+        )
 
     def validate_turma(self, value):
         """A turma precisa pertencer a um dos professores logados."""

@@ -1,4 +1,7 @@
 # pyright: reportIncompatibleVariableOverride=false
+import os
+from typing import cast
+
 import factory
 from django.contrib.auth import get_user_model
 
@@ -7,16 +10,16 @@ from apps.escolas.models import Config, Escola, Turma
 from apps.items.models import Item
 from apps.pedagogico.models import Atividade, Relatorio
 
-SENHA = "Senha-forte-123"
+SENHA = os.getenv("SEED_DEMO_PASSWORD") or "Senha-forte-123"
 
 
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = get_user_model()
 
-    matricula = factory.Sequence(lambda n: f"TESTE{n:06d}")
-    email = factory.Sequence(lambda n: f"usuario{n}@example.com")
-    name = factory.Sequence(lambda n: f"Usuário {n}")
+    matricula = factory.declarations.Sequence(lambda n: f"TESTE{n:06d}")
+    email = factory.declarations.Sequence(lambda n: f"usuario{n}@example.com")
+    name = factory.declarations.Sequence(lambda n: f"Usuário {n}")
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
@@ -27,26 +30,26 @@ class ItemFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Item
 
-    title = factory.Sequence(lambda n: f"Item {n}")
-    owner = factory.SubFactory(UserFactory)
+    title = factory.declarations.Sequence(lambda n: f"Item {n}")
+    owner = factory.declarations.SubFactory(UserFactory)
 
 
 class ConfigFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Config
 
-    api_key = factory.Sequence(lambda n: f"key-{n}")
-    modelo = factory.Sequence(lambda n: f"modelo-{n}")
-    campos_form = factory.LazyFunction(dict)
+    api_key = factory.declarations.Sequence(lambda n: f"key-{n}")
+    modelo = factory.declarations.Sequence(lambda n: f"modelo-{n}")
+    campos_form = factory.declarations.LazyFunction(dict)
 
 
 class EscolaFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Escola
 
-    nome = factory.Sequence(lambda n: f"Escola {n}")
-    endereco = factory.Sequence(lambda n: f"Rua {n}")
-    config = factory.SubFactory(ConfigFactory)
+    nome = factory.declarations.Sequence(lambda n: f"Escola {n}")
+    endereco = factory.declarations.Sequence(lambda n: f"Rua {n}")
+    config = factory.declarations.SubFactory(ConfigFactory)
 
 
 class TurmaFactory(factory.django.DjangoModelFactory):
@@ -54,51 +57,52 @@ class TurmaFactory(factory.django.DjangoModelFactory):
         model = Turma
         skip_postgeneration_save = True
 
-    nome = factory.Sequence(lambda n: f"Turma {n}")
-    escola = factory.SubFactory(EscolaFactory)
+    nome = factory.declarations.Sequence(lambda n: f"Turma {n}")
+    escola = factory.declarations.SubFactory(EscolaFactory)
 
-    @factory.post_generation
+    @factory.declarations.PostGeneration
     def professores(self, create, extracted, **kwargs):
         if not create:
             return
         if extracted:
+            turma = cast(Turma, self)
             for professor in extracted:
-                self.professores.add(professor)
+                turma.professores.add(professor)
 
 
 class ResponsavelFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Responsavel
 
-    nome = factory.Sequence(lambda n: f"Responsável {n}")
-    email = factory.Sequence(lambda n: f"responsavel{n}@example.com")
-    cpf = factory.Sequence(lambda n: f"1234567890{n % 9 + 1}")
-    telefone = factory.Sequence(lambda n: f"1198765432{n % 9 + 1}")
-    endereco = factory.Sequence(lambda n: f"Endereço {n}")
+    nome = factory.declarations.Sequence(lambda n: f"Responsável {n}")
+    email = factory.declarations.Sequence(lambda n: f"responsavel{n}@example.com")
+    cpf = factory.declarations.Sequence(lambda n: f"1234567890{n % 9 + 1}")
+    telefone = factory.declarations.Sequence(lambda n: f"1198765432{n % 9 + 1}")
+    endereco = factory.declarations.Sequence(lambda n: f"Endereço {n}")
 
 
 class MetaDadosFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MetaDados
 
-    perfil_disc = factory.Iterator(["D", "I", "S", "C"])
-    caracteristicas = factory.LazyAttribute(lambda o: {})
+    perfil_disc = factory.declarations.Iterator(["D", "I", "S", "C"])
+    caracteristicas = factory.declarations.LazyFunction(dict)
 
 
 class AlunoFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Aluno
 
-    nome = factory.Sequence(lambda n: f"Aluno {n}")
-    turma = factory.SubFactory(TurmaFactory)
+    nome = factory.declarations.Sequence(lambda n: f"Aluno {n}")
+    turma = factory.declarations.SubFactory(TurmaFactory)
 
 
 class RelatorioFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Relatorio
 
-    aluno = factory.SubFactory(AlunoFactory)
-    dados = factory.LazyFunction(dict)
+    aluno = factory.declarations.SubFactory(AlunoFactory)
+    dados = factory.declarations.LazyFunction(dict)
 
 
 class AtividadeFactory(factory.django.DjangoModelFactory):
@@ -106,14 +110,15 @@ class AtividadeFactory(factory.django.DjangoModelFactory):
         model = Atividade
         skip_postgeneration_save = True
 
-    nome = factory.Sequence(lambda n: f"Atividade {n}")
-    tipo = factory.Sequence(lambda n: f"Tipo {n}")
-    aluno = factory.SubFactory(AlunoFactory)
+    nome = factory.declarations.Sequence(lambda n: f"Atividade {n}")
+    tipo = factory.declarations.Sequence(lambda n: f"Tipo {n}")
+    aluno = factory.declarations.SubFactory(AlunoFactory)
 
-    @factory.post_generation
+    @factory.declarations.PostGeneration
     def relatorios(self, create, extracted, **kwargs):
         if not create:
             return
         if extracted:
+            atividade = cast(Atividade, self)
             for relatorio in extracted:
-                self.relatorios.add(relatorio)
+                atividade.relatorios.add(relatorio)

@@ -1,8 +1,8 @@
 """Função pura de anonimização: dados do relatório -> payload sem PII (LGPD art. 14).
 
 Nada de nome real, CPF, responsável, cidade ou data de nascimento pode chegar
-à LLM. O nome do aluno é trocado por um codinome e os campos sensíveis são
-removidos antes do envio.
+à LLM. Matrícula também é removida. O nome do aluno é trocado por um codinome
+e os campos sensíveis são removidos antes do envio.
 """
 
 import re
@@ -37,6 +37,7 @@ CHAVES_PII = frozenset(
         "responsável",
         "responsaveis",
         "responsáveis",
+        "matricula",
         "data_nascimento",
         "data_de_nascimento",
         "nascimento",
@@ -63,6 +64,7 @@ def anonimizar(dados: dict, nome_aluno: str = "", nome_responsavel: str = "") ->
       os textos do payload; o primeiro nome isolado também é trocado. A troca
       não diferencia maiúsculas de minúsculas.
     - "nome_responsavel", quando informado, é trocado por "o responsável".
+    - Matrícula e demais identificadores são removidos das chaves do payload.
     - Datas (dd/mm/aaaa) e sequências que parecem CPF são removidas dos textos.
     - Chaves sensíveis são completamente removidas (comparação sem
       diferenciar maiúsculas de minúsculas).

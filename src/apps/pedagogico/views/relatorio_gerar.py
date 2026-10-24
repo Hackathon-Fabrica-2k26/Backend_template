@@ -27,8 +27,8 @@ class RelatorioGerarSerializer(serializers.Serializer):
 class RelatorioGerarView(APIView):
     """Gera o relatório do aluno com IA a partir do que o professor informa.
 
-    O payload enviado à LLM é anonimizado (nome, CPF, responsável, datas e
-    cidade nunca vão ao modelo); o aluno é tratado por codinome na resposta.
+    O payload enviado à LLM é anonimizado (nome, matrícula, CPF, responsável,
+    datas e cidade nunca vão ao modelo); o aluno é tratado por codinome na resposta.
     """
 
     def post(self, request):
