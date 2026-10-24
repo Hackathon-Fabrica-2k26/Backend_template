@@ -90,13 +90,20 @@ Todos os campos devem ser strings em português do Brasil.
 MAX_RESPOSTA_TOKENS = 8192
 
 
+def normalizar_modelo(modelo: str | None) -> str:
+    """Nome do modelo como a API espera: sem espaços nem o prefixo "models/"."""
+    nome = (modelo or "").strip()
+    if nome.lower().startswith("models/"):
+        nome = nome[len("models/") :]
+    return nome or MODELO_PADRAO
+
+
 class LLMError(Exception):
     """Falha esperada na comunicação ou resposta da LLM."""
 
     def __init__(self, mensagem: str | None = None):
         super().__init__(
-            mensagem
-            or "Não foi possível gerar o relatório agora. Tente novamente em instantes."
+            mensagem or "Não foi possível gerar o relatório agora. Tente novamente em instantes."
         )
 
 
@@ -109,9 +116,13 @@ def gerar_relatorio(
     if not api_key:
         raise LLMError("Nenhuma credencial de IA configurada para esta escola.")
 
-    conteudo = FORMATO_RESPOSTA + "\n\n" + json.dumps(
-        payload,
-        ensure_ascii=False,
+    conteudo = (
+        FORMATO_RESPOSTA
+        + "\n\n"
+        + json.dumps(
+            payload,
+            ensure_ascii=False,
+        )
     )
 
     try:
@@ -139,9 +150,7 @@ def sugerir_atividade(
 
     Se a IA falhar ou não houver API key, utiliza um fallback local.
     """
-    titulo_fallback = (
-        Path(nome_arquivo).stem.strip() if nome_arquivo else ""
-    ) or "Atividade"
+    titulo_fallback = (Path(nome_arquivo).stem.strip() if nome_arquivo else "") or "Atividade"
     titulo_fallback = titulo_fallback[:255]
     descricao_fallback = texto_original.strip()[:300]
 
@@ -151,15 +160,9 @@ def sugerir_atividade(
             "descricao": descricao_fallback,
         }
 
-    texto_limpo = str(
-        anonimizar({"texto": texto_original}).get("texto", "")
-    ).strip()
+    texto_limpo = str(anonimizar({"texto": texto_original}).get("texto", "")).strip()
 
-    conteudo = (
-        FORMATO_SUGESTAO_ATIVIDADE
-        + "\n\n"
-        + (texto_limpo or descricao_fallback)
-    )
+    conteudo = FORMATO_SUGESTAO_ATIVIDADE + "\n\n" + (texto_limpo or descricao_fallback)
 
     try:
         resposta = _pedir_ao_gemini(conteudo, api_key, modelo)
@@ -240,15 +243,10 @@ def extrair_atividade_multimodal(
             raise LLMError()
 
         campos = ("texto_original", "titulo", "descricao")
-        resultado = {
-            campo: str(dados.get(campo) or "").strip()
-            for campo in campos
-        }
+        resultado = {campo: str(dados.get(campo) or "").strip() for campo in campos}
 
         if not all(resultado.values()):
-            raise LLMError(
-                "A IA não conseguiu extrair todos os dados da atividade."
-            )
+            raise LLMError("A IA não conseguiu extrair todos os dados da atividade.")
 
         resultado["titulo"] = resultado["titulo"][:255]
         return resultado
