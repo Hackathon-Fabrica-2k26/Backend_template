@@ -21,7 +21,17 @@ def api_root(request, format=None):
             "turmas": reverse("turma-list", request=request, format=format),
             "chamada-reconhecer": reverse("chamada-reconhecer", request=request, format=format),
             "alunos": reverse("aluno-list", request=request, format=format),
+            "aluno-pontos-atencao": (
+                f"{reverse('aluno-list', request=request, format=format)}{{id}}/pontos-atencao/"
+            ),
+            "aluno-rascunho-pei": (
+                f"{reverse('aluno-list', request=request, format=format)}{{id}}/rascunho-pei/"
+            ),
+            "aluno-rascunho-pei-pdf": (
+                f"{reverse('aluno-list', request=request, format=format)}{{id}}/rascunho-pei/pdf/"
+            ),
             "responsaveis": reverse("responsavel-list", request=request, format=format),
+            "consentimentos": reverse("consentimento-list", request=request, format=format),
             "meta-dados": reverse("meta-dados-list", request=request, format=format),
             "atividades": reverse("atividade-list", request=request, format=format),
             "atividades-extrair": reverse("atividade-extrair", request=request, format=format),

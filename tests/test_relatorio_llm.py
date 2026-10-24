@@ -51,13 +51,15 @@ def test_gerar_relatorio_com_llm_mockada(monkeypatch):
         return RESPOSTA_FAKE
 
     monkeypatch.setattr("apps.pedagogico.services.llm._pedir_ao_gemini", fake)
-    resposta = gerar_relatorio(PAYLOAD_OK, "chave-secreta-da-escola", modelo="gemini-2.5-flash")
+    resposta = gerar_relatorio(
+        PAYLOAD_OK, "chave-secreta-da-escola", modelo="gemini-3.8-flash-lite"
+    )
 
     assert resposta["radar"] == [10]
     assert resposta["atividades"][0]["titulo"] == "Contagem na feira"
     assert resposta["disclaimer"] == DISCLAIMER
     assert capturado["api_key"] == "chave-secreta-da-escola"
-    assert capturado["modelo"] == "gemini-2.5-flash"
+    assert capturado["modelo"] == "gemini-3.8-flash-lite"
     assert "Aluno Alfa" in capturado["conteudo"]
     assert json.dumps(PAYLOAD_COM_PII) not in capturado["conteudo"]
 

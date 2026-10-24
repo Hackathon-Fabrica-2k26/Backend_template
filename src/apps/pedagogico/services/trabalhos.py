@@ -11,6 +11,8 @@ from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 
 from apps.alunos.models import Aluno
+from apps.alunos.services import alunos_com_consentimento
+from apps.escolas.services.escola_usuario import config_ia_do_usuario
 from apps.pedagogico.models import Atividade, EnvioTrabalhos, Relatorio, Trabalho
 from apps.pedagogico.services.llm import DISCLAIMER, LLMError
 
@@ -88,8 +90,7 @@ def extrair_texto_docx(conteudo: bytes) -> str:
 
 def _obter_credenciais_llm(usuario) -> tuple[str, str]:
     """Obtém api_key e modelo da Config da escola do professor ou de variáveis de ambiente."""
-    escola = getattr(usuario, "escola", None)
-    config = getattr(escola, "config", None) if escola else None
+    config = config_ia_do_usuario(usuario)
     api_key = (
         getattr(config, "api_key", None)
         or getattr(settings, "GEMINI_API_KEY", None)
@@ -98,7 +99,7 @@ def _obter_credenciais_llm(usuario) -> tuple[str, str]:
     modelo = (
         getattr(config, "modelo", None)
         or getattr(settings, "GEMINI_MODEL", None)
-        or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        or os.environ.get("GEMINI_MODEL", "gemini-3.8-flash-lite")
     )
     return api_key, modelo
 
@@ -109,7 +110,7 @@ def analisar_trabalho_com_gemini(
     mime_type: str,
     nome_arquivo: str,
     api_key: str,
-    modelo: str = "gemini-2.5-flash",
+    modelo: str = "gemini-3.8-flash-lite",
 ) -> dict[str, Any]:
     """Envia o trabalho em memória para o Gemini extrair o nome do aluno,
     a descrição detalhada da atividade e a análise pedagógica estruturada.
@@ -283,6 +284,8 @@ def processar_envio_trabalhos(
 
     turma = atividade.turma
     alunos_turma = list(Aluno.objects.filter(turma=turma)) if turma else []
+    # LGPD (Art. 14): só alunos com consentimento recebem a análise da IA (nomes não vão ao prompt).
+    ids_com_consentimento = {a.pk for a in alunos_com_consentimento(alunos_turma)}
 
     envio = EnvioTrabalhos.objects.create(
         atividade=atividade,
@@ -308,6 +311,17 @@ def processar_envio_trabalhos(
         analise_pedagogica = resultado_ia["analise_pedagogica"]
 
         aluno_casado, confianca, identificacao = casar_nome_aluno(nome_lido, alunos_turma)
+
+        if aluno_casado and aluno_casado.pk not in ids_com_consentimento:
+            # Sem consentimento: descarta a análise e não vincula ao aluno.
+            Trabalho.objects.create(
+                envio=envio,
+                atividade=atividade,
+                aluno=None,
+                identificacao=Trabalho.IdentificacaoChoices.SEM_CONSENTIMENTO,
+                status=Trabalho.StatusChoices.ANALISADO,
+            )
+            continue
 
         trabalho = Trabalho.objects.create(
             envio=envio,

@@ -124,10 +124,10 @@ def test_gerar_relatorio_com_llm_fora_do_ar_retorna_502(auth_client, db, user, m
 
 
 def test_gerar_relatorio_sem_credencial_da_escola_retorna_502(auth_client, db, user):
-    """Professor sem escola (logo sem api_key) recebe 502 com mensagem amigável."""
+    """Escola sem api_key recebe 502 com mensagem amigável."""
     user.escola = None
     user.save()
-    turma = TurmaFactory(professores=[user])
+    turma = TurmaFactory(professores=[user], escola__config__api_key="")
     aluno = AlunoFactory(turma=turma)
 
     response = auth_client.post(GERAR_URL, _formulario(aluno), format="json")

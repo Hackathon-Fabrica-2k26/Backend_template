@@ -101,7 +101,7 @@ class Command(BaseCommand):
 
         # 2. Catálogo / Domínio Fixo (Configurações de IA)
         config, config_created = Config.objects.get_or_create(
-            modelo="gemini-2.5-flash",
+            modelo="gemini-3.8-flash-lite",
             defaults={
                 "api_key": "seed-api-key-desenvolvimento",
                 "campos_form": {

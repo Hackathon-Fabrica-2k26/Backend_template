@@ -1,6 +1,6 @@
-"""Reconhecimento de nomes de alunos em foto de lista de chamada via Gemini (OCR).
+"""Reconhecimento de nomes de alunos em foto ou PDF de lista de chamada via Gemini (OCR).
 
-A imagem é processada exclusivamente em memória (bytes) e nunca é gravada em
+O arquivo é processado exclusivamente em memória (bytes) e nunca é gravado em
 disco, banco de dados ou logs (LGPD).
 """
 
@@ -18,29 +18,42 @@ MENSAGEM_ERRO_PADRAO = (
 )
 
 SYSTEM_PROMPT_CHAMADA = (
-    "Você é um assistente de OCR escolar. Analise a imagem de uma lista de "
-    "chamada e extraia apenas os nomes completos dos estudantes listados.\n"
+    "Você é um assistente de OCR escolar. Analise a imagem ou documento PDF de "
+    "uma lista de chamada e extraia APENAS a coluna de nomes completos dos estudantes.\n"
     "Regras obrigatórias:\n"
+    "- Foque exclusivamente na coluna de nomes dos alunos.\n"
+    "- Ignore completamente datas de nascimento, observações (médicas ou pedagógicas), "
+    "números de chamada, códigos de matrícula, cabeçalhos, assinaturas, notas, "
+    "marcações de presença/falta e qualquer outra coluna ou informação.\n"
     "- Mantenha exatamente a ordem em que os nomes aparecem na lista.\n"
-    "- Remova números de chamada, códigos de matrícula, datas, cabeçalhos, "
-    "assinaturas, notas ou marcações de presença/falta.\n"
     "- Não inclua nomes duplicados.\n"
-    "- Não invente nomes que não estejam legíveis na imagem.\n"
-    '- Responda APENAS com um JSON válido no formato {"nomes": ["Nome Completo 1", ...]}.'
+    "- Não invente nomes que não estejam no documento.\n"
+    "- Para cada nome, informe o índice de confiança de legibilidade (`confianca`) "
+    "entre 0.0 (muito ilegível/duvidoso) e 1.0 (totalmente nítido).\n"
+    "- Responda APENAS com um JSON válido no formato:\n"
+    '  {"nomes": [{"nome": "Nome Completo 1", "confianca": 0.95}, ...]}'
 )
 
 PROMPT_USUARIO_CHAMADA = (
-    "Extraia os nomes completos dos alunos desta lista de chamada e devolva "
-    'exclusivamente um JSON no formato {"nomes": ["..."]}.'
+    "Extraia somente a coluna de nomes completos dos alunos desta lista de chamada "
+    "(ignorando datas de nascimento, observações e demais colunas) e devolva "
+    "exclusivamente um JSON no formato "
+    '{"nomes": [{"nome": "...", "confianca": 0.95}]}.'
 )
 
 _PREFIXO_NUMERO_RE = re.compile(r"^\s*\d+\s*[\.\)\-–—:ºª]*\s*")
+_DATA_RE = re.compile(r"\b(?:\d{2}/\d{2}/\d{4}|\d{4}-\d{2}-\d{2})\b")
 
 
-def reconhecer_nomes(imagem_bytes: bytes, mime: str, config) -> list[str]:
-    """Envia a imagem da lista de chamada ao Gemini e devolve a lista de nomes.
+def reconhecer_nomes(
+    imagem_bytes: bytes,
+    mime: str,
+    config,
+) -> list[dict[str, str | float]]:
+    """Envia o arquivo (imagem ou PDF) da lista de chamada ao Gemini e devolve
+    a lista de nomes com confiança de legibilidade.
 
-    Recebe os bytes da imagem em memória, o MIME type validado e a ``Config``
+    Recebe os bytes do arquivo em memória, o MIME type validado e a ``Config``
     da escola do professor. Levanta ``LLMError`` se não houver credencial
     configurada ou se a chamada/resposta da LLM falhar.
     """
@@ -64,15 +77,15 @@ def reconhecer_nomes(imagem_bytes: bytes, mime: str, config) -> list[str]:
 
 
 def _pedir_ocr_ao_gemini(imagem_bytes: bytes, mime: str, api_key: str, modelo: str) -> str:
-    """Envia a imagem em memória ao Gemini Vision e devolve o texto JSON."""
+    """Envia a imagem ou PDF em memória ao Gemini e devolve o texto JSON."""
     try:
         from google import genai
 
         client = genai.Client(api_key=api_key)
-        imagem_part = genai.types.Part.from_bytes(data=imagem_bytes, mime_type=mime)
+        arquivo_part = genai.types.Part.from_bytes(data=imagem_bytes, mime_type=mime)
         resposta = client.models.generate_content(
             model=modelo,
-            contents=[imagem_part, PROMPT_USUARIO_CHAMADA],
+            contents=[arquivo_part, PROMPT_USUARIO_CHAMADA],
             config=genai.types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT_CHAMADA,
                 response_mime_type="application/json",
@@ -84,20 +97,43 @@ def _pedir_ocr_ao_gemini(imagem_bytes: bytes, mime: str, api_key: str, modelo: s
     return resposta.text or ""
 
 
-def _limpar_nomes(itens: list) -> list[str]:
-    """Remove numeração inicial, espaços extras, itens vazios e duplicatas preservando a ordem."""
-    nomes: list[str] = []
+def _normalizar_confianca(valor) -> float:
+    """Garante um float entre 0.0 e 1.0 (padrão 1.0 quando ausente/inválido)."""
+    if valor is None or isinstance(valor, bool):
+        return 1.0
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        return 1.0
+    return round(max(0.0, min(1.0, numero)), 4)
+
+
+def _limpar_nomes(itens: list) -> list[dict[str, str | float]]:
+    """Extrai apenas nome e confiança, removendo numeração, datas, campos extras e duplicatas."""
+    resultado: list[dict[str, str | float]] = []
     vistos: set[str] = set()
     for item in itens:
-        if not isinstance(item, str):
+        if isinstance(item, dict):
+            bruto = item.get("nome")
+            confianca = _normalizar_confianca(item.get("confianca"))
+        elif isinstance(item, str):
+            bruto = item
+            confianca = 1.0
+        else:
             continue
-        limpo = _PREFIXO_NUMERO_RE.sub("", item).strip()
-        limpo = re.sub(r"\s+", " ", limpo)
+
+        if not isinstance(bruto, str):
+            continue
+
+        limpo = _PREFIXO_NUMERO_RE.sub("", bruto)
+        limpo = _DATA_RE.sub("", limpo)
+        limpo = re.sub(r"\s+", " ", limpo).strip(" -–—|,;:")
         if not limpo:
             continue
+
         chave = limpo.casefold()
         if chave in vistos:
             continue
         vistos.add(chave)
-        nomes.append(limpo)
-    return nomes
+        resultado.append({"nome": limpo, "confianca": confianca})
+    return resultado

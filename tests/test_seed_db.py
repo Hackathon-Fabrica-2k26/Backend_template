@@ -34,7 +34,7 @@ def test_seed_db_popula_entidades_completas(executar_seed):
     assert admin.check_password("admin123") is True
 
     # Config & Escolas
-    assert Config.objects.filter(modelo="gemini-2.5-flash").exists()
+    assert Config.objects.filter(modelo="gemini-3.8-flash-lite").exists()
     assert Escola.objects.count() == 2
     for escola in Escola.objects.all():
         assert escola.config is not None
