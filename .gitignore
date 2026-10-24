@@ -18,3 +18,4 @@ docs/superpowers/
 .opencode-data/
 scripts/
 .claude/
+schema.yml

@@ -21,6 +21,9 @@ def api_root(request, format=None):
             "turmas": reverse("turma-list", request=request, format=format),
             "chamada-reconhecer": reverse("chamada-reconhecer", request=request, format=format),
             "alunos": reverse("aluno-list", request=request, format=format),
+            "aluno-laudo": (
+                f"{reverse('aluno-list', request=request, format=format)}{{id}}/laudo/"
+            ),
             "aluno-pontos-atencao": (
                 f"{reverse('aluno-list', request=request, format=format)}{{id}}/pontos-atencao/"
             ),

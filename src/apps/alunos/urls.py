@@ -4,6 +4,7 @@ from rest_framework.routers import SimpleRouter
 from apps.alunos.views import (
     AlunoCodigoAcessoRevogarView,
     AlunoCodigoAcessoView,
+    AlunoLaudoView,
     AlunoViewSet,
     ConsentimentoViewSet,
     MetaDadosViewSet,
@@ -44,6 +45,11 @@ urlpatterns = [
         "responsavel/consentimento/revogar/",
         ResponsavelConsentimentoRevogarView.as_view(),
         name="responsavel-consentimento-revogar",
+    ),
+    path(
+        "alunos/<int:id>/laudo/",
+        AlunoLaudoView.as_view(),
+        name="aluno-laudo",
     ),
     path(
         "alunos/<int:id>/pontos-atencao/",
