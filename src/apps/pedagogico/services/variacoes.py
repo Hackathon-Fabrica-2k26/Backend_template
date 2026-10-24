@@ -28,15 +28,19 @@ MAX_GRUPOS_ADAPTADOS = 4
 PROMPT_VARIACAO_ATIVIDADE = (
     "Você é um assistente pedagógico especialista em educação inclusiva.\n"
     "Adapte o texto da atividade abaixo considerando APENAS as necessidades "
-    "pedagógicas e estratégias de ensino informadas.\n"
+    "pedagógicas, estratégias e interesses informados.\n"
     "REGRAS OBRIGATÓRIAS:\n"
+    "- Mantenha o objetivo de aprendizagem, TODAS as questões, a numeração e "
+    "TODOS os números dos problemas exatamente como no original; adapte apenas a "
+    "forma (linguagem, divisão em etapas, apoio visual, espaço para resposta).\n"
+    "- O conteúdo NÃO pode citar nome de aluno, turma, condição, a palavra grupo nem "
+    "dizer que é uma versão adaptada: quem recebe a folha não deve perceber diferença.\n"
     "- NUNCA faça diagnósticos médicos, psiquiátricos ou psicológicos.\n"
     "- NUNCA mencione CID, TDAH, autismo, TEA, dislexia, deficiência, "
     "transtornos ou qualquer condição clínica.\n"
-    "- NUNCA mencione nomes de alunos, turmas ou dados pessoais.\n"
-    "- Mantenha o objetivo pedagógico da atividade original.\n"
     "Responda APENAS com um JSON válido, em português do Brasil, no formato:\n"
-    '{\n  "conteudo": "texto completo da atividade adaptada"\n}'
+    '{\n  "conteudo": "texto completo da atividade adaptada",\n'
+    '  "adaptacoes_feitas": ["o que foi mudado, em frases curtas para a professora"]\n}'
 )
 
 # Remove códigos CID (ex.: CID-10 F90.0, CID F84, CID11 6A02) e termos clínicos.
@@ -89,6 +93,34 @@ def _similaridade(g1: GrupoVariacao, g2: GrupoVariacao) -> float:
     return intersecao / uniao if uniao else 0.0
 
 
+def _perfil_dos_metadados(aluno: Aluno) -> tuple[list[str], list[str]]:
+    """Sem PerfilApoio, usa os MetaDados do aluno: necessidades e estratégias, se houver,
+    e as demais características como interesses a aproveitar. O perfil DISC não entra."""
+    meta = getattr(aluno, "meta_dados", None)
+    caracteristicas = getattr(meta, "caracteristicas", None) if meta else None
+    if not isinstance(caracteristicas, dict) or not caracteristicas:
+        return [], []
+
+    necessidades = _limpar_lista_pedagogica(_como_lista(caracteristicas.get("necessidades")))
+    estrategias = _limpar_lista_pedagogica(_como_lista(caracteristicas.get("estrategias")))
+    for chave, valor in caracteristicas.items():
+        if chave in ("necessidades", "estrategias") or valor in (None, "", [], {}):
+            continue
+        texto = ", ".join(map(str, valor)) if isinstance(valor, list) else str(valor)
+        estrategias.extend(
+            _limpar_lista_pedagogica([f"Aproveitar interesse/característica: {chave} ({texto})"])
+        )
+    return necessidades, estrategias
+
+
+def _como_lista(valor) -> list:
+    if isinstance(valor, list):
+        return [str(v) for v in valor]
+    if isinstance(valor, str) and valor.strip():
+        return [valor]
+    return []
+
+
 def agrupar_perfis_apoio(
     alunos: list[Aluno],
     max_grupos: int = MAX_GRUPOS_ADAPTADOS,
@@ -111,12 +143,11 @@ def agrupar_perfis_apoio(
 
     for aluno in alunos:
         perfil = perfis_ativos.get(aluno.id)
-        if perfil is None:
-            alunos_geral.append(aluno)
-            continue
-
-        necessidades = _limpar_lista_pedagogica(perfil.necessidades)
-        estrategias = _limpar_lista_pedagogica(perfil.estrategias)
+        if perfil is not None:
+            necessidades = _limpar_lista_pedagogica(perfil.necessidades)
+            estrategias = _limpar_lista_pedagogica(perfil.estrategias)
+        else:
+            necessidades, estrategias = _perfil_dos_metadados(aluno)
 
         if not necessidades and not estrategias:
             alunos_geral.append(aluno)
@@ -184,7 +215,7 @@ def _gerar_conteudo_adaptado(
     todos_alunos: list[Aluno],
     api_key: str,
     modelo: str,
-) -> str:
+) -> tuple[str, list[str]]:
     payload_bruto = {
         "texto_original": _limpar_texto_clinico(atividade.texto_original),
         "objetivo": _limpar_texto_clinico(atividade.objetivo or ""),
@@ -219,7 +250,12 @@ def _gerar_conteudo_adaptado(
             "Não foi possível gerar as variações da atividade agora. Tente novamente em instantes."
         )
 
-    return _limpar_texto_clinico(conteudo_adaptado)
+    adaptacoes = [
+        _limpar_texto_clinico(str(a)).strip()
+        for a in (dados.get("adaptacoes_feitas") or [])
+        if isinstance(a, str) and a.strip()
+    ]
+    return _limpar_texto_clinico(conteudo_adaptado), adaptacoes
 
 
 def gerar_variacoes_atividade(
@@ -238,23 +274,23 @@ def gerar_variacoes_atividade(
             ativo=True,
             deleted__isnull=True,
         )
-        .select_related("responsavel")
+        .select_related("responsavel", "meta_dados")
         .order_by("id")
     )
 
     alunos_geral, grupos_adaptados = agrupar_perfis_apoio(alunos_turma)
 
     # 1. Chama a LLM para todos os grupos antes de alterar o banco.
-    conteudos_grupos: list[tuple[GrupoVariacao, str]] = []
+    conteudos_grupos: list[tuple[GrupoVariacao, str, list[str]]] = []
     for grupo in grupos_adaptados:
-        conteudo_adaptado = _gerar_conteudo_adaptado(
+        conteudo_adaptado, adaptacoes = _gerar_conteudo_adaptado(
             atividade=atividade,
             grupo=grupo,
             todos_alunos=alunos_turma,
             api_key=api_key,
             modelo=modelo,
         )
-        conteudos_grupos.append((grupo, conteudo_adaptado))
+        conteudos_grupos.append((grupo, conteudo_adaptado, adaptacoes))
 
     # 2. Persiste as variações e atribuições em transação atômica.
     with transaction.atomic():
@@ -300,7 +336,7 @@ def gerar_variacoes_atividade(
             VariacaoAluno.objects.get_or_create(variacao=variacao_geral, aluno=aluno)
 
         # Versões adaptadas (prova_v2..N)
-        for grupo, conteudo_adaptado in conteudos_grupos:
+        for grupo, conteudo_adaptado, adaptacoes in conteudos_grupos:
             num_var = proximo_numero(2)
             variacao = AtividadeVariacao.objects.create(
                 atividade=atividade,
@@ -308,6 +344,7 @@ def gerar_variacoes_atividade(
                 rotulo=f"prova_v{num_var}",
                 eh_geral=False,
                 conteudo=conteudo_adaptado,
+                adaptacoes_feitas=adaptacoes,
                 status=AtividadeVariacao.StatusChoices.RASCUNHO,
             )
             for aluno in grupo.alunos:
