@@ -20,16 +20,25 @@ from .trabalhos import (
     processar_envio_trabalhos,
     validar_arquivos_envio,
 )
+from .variacoes import (
+    MAX_GRUPOS_ADAPTADOS,
+    PROMPT_VARIACAO_ATIVIDADE,
+    agrupar_perfis_apoio,
+    gerar_variacoes_atividade,
+)
 
 __all__ = [
     "DISCLAIMER",
     "ExtracaoError",
     "FORMATOS_ACEITOS",
     "LLMError",
+    "MAX_GRUPOS_ADAPTADOS",
     "MAX_TAMANHO_BYTES",
     "MODELO_PADRAO",
+    "PROMPT_VARIACAO_ATIVIDADE",
     "SYSTEM_PROMPT",
     "TAMANHO_MAXIMO_BYTES",
+    "agrupar_perfis_apoio",
     "analisar_trabalho_com_gemini",
     "anonimizar",
     "casar_nome_aluno",
@@ -37,6 +46,7 @@ __all__ = [
     "extrair_texto",
     "extrair_texto_docx",
     "gerar_relatorio",
+    "gerar_variacoes_atividade",
     "identificar_origem",
     "processar_envio_trabalhos",
     "sugerir_atividade",

@@ -1,10 +1,23 @@
+import re
+
+from django.db import transaction
 from django.db.models import Count, Q
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
 
+from apps.alunos.models import Aluno
 from apps.escolas.models import Turma
 from apps.escolas.serializers import TurmaSerializer
+from apps.escolas.serializers.turma import limpar_nome_aluno
 
 
+@extend_schema_view(
+    create=extend_schema(
+        request=TurmaSerializer,
+        responses={201: TurmaSerializer, 400: OpenApiTypes.OBJECT},
+    ),
+)
 class TurmaViewSet(viewsets.ModelViewSet):
     serializer_class = TurmaSerializer
     filterset_fields = ["escola", "ano_letivo"]
@@ -26,9 +39,11 @@ class TurmaViewSet(viewsets.ModelViewSet):
             .distinct()
         )
 
+    @transaction.atomic
     def perform_create(self, serializer):
         user = self.request.user
         escola = getattr(user, "escola", None)
+        nomes_brutos = serializer.validated_data.pop("alunos", None) or []
 
         if escola is not None:
             turma = serializer.save(escola=escola)
@@ -36,3 +51,18 @@ class TurmaViewSet(viewsets.ModelViewSet):
             turma = serializer.save()
 
         turma.professores.add(user)
+
+        vistos: set[str] = set()
+        criados = 0
+        for item in nomes_brutos:
+            nome_limpo = limpar_nome_aluno(item)
+            if not nome_limpo:
+                continue
+            chave = re.sub(r"\s+", "", nome_limpo).casefold()
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            Aluno.objects.create(nome=nome_limpo, turma=turma)
+            criados += 1
+
+        turma.total_estudantes = criados

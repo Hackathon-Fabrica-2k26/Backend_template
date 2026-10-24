@@ -5,6 +5,20 @@ from apps.alunos.models import Aluno
 from ..models import AtividadeVariacao, VariacaoAluno
 
 
+class MapaVariacaoAlunoSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    nome = serializers.CharField()
+
+
+class MapaVariacaoItemSerializer(serializers.Serializer):
+    variacao_id = serializers.IntegerField()
+    numero = serializers.IntegerField()
+    rotulo = serializers.CharField()
+    eh_geral = serializers.BooleanField()
+    status = serializers.CharField()
+    alunos = MapaVariacaoAlunoSerializer(many=True)
+
+
 class AtividadeVariacaoSerializer(serializers.ModelSerializer):
     alunos = serializers.PrimaryKeyRelatedField(
         queryset=Aluno.objects.all(),
@@ -67,6 +81,8 @@ class AtividadeVariacaoSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         alunos = validated_data.pop("alunos", None)
+        if "conteudo" in validated_data and "editada_manual" not in validated_data:
+            validated_data["editada_manual"] = True
         variacao = super().update(instance, validated_data)
         if alunos is not None:
             ids_novos = {aluno.pk for aluno in alunos}
