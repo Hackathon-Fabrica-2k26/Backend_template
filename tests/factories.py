@@ -7,7 +7,9 @@ from apps.escolas.models import Config, Escola, Turma
 from apps.items.models import Item
 from apps.pedagogico.models import Atividade, Relatorio
 
-SENHA = "Senha-forte-123"
+import os
+
+SENHA = os.getenv("SEED_DEMO_PASSWORD", "Senha-forte-123")
 
 
 class UserFactory(factory.django.DjangoModelFactory):
