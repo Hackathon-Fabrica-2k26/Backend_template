@@ -27,6 +27,7 @@ class AtividadeVariacao(BaseModel):
         default=StatusChoices.RASCUNHO,
     )
     editada_manual = models.BooleanField("editada manualmente", default=False)
+    adaptacoes_feitas = models.JSONField("adaptações feitas", default=list, blank=True)
     aprovada_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
