@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework.routers import SimpleRouter
 
 from apps.alunos.views import (
+    AlunoLaudoView,
     AlunoViewSet,
     ConsentimentoViewSet,
     MetaDadosViewSet,
@@ -17,6 +18,11 @@ router.register("consentimentos", ConsentimentoViewSet, basename="consentimento"
 router.register("meta-dados", MetaDadosViewSet, basename="meta-dados")
 
 urlpatterns = [
+    path(
+        "alunos/<int:id>/laudo/",
+        AlunoLaudoView.as_view(),
+        name="aluno-laudo",
+    ),
     path(
         "alunos/<int:id>/pontos-atencao/",
         AlunoPontosAtencaoView.as_view(),
