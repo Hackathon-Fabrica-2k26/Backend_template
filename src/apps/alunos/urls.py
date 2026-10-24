@@ -12,6 +12,8 @@ from apps.alunos.views import (
     ResponsavelAlunoView,
     ResponsavelConsentimentoRevogarView,
     ResponsavelConsentimentoView,
+    ResponsavelLaudoView,
+    ResponsavelPerfilApoioView,
     ResponsavelViewSet,
 )
 from apps.pedagogico.views.pei import AlunoRascunhoPEIPDFView, AlunoRascunhoPEIView
@@ -45,6 +47,12 @@ urlpatterns = [
         "responsavel/consentimento/revogar/",
         ResponsavelConsentimentoRevogarView.as_view(),
         name="responsavel-consentimento-revogar",
+    ),
+    path("responsavel/laudo/", ResponsavelLaudoView.as_view(), name="responsavel-laudo"),
+    path(
+        "responsavel/perfil-apoio/",
+        ResponsavelPerfilApoioView.as_view(),
+        name="responsavel-perfil-apoio",
     ),
     path(
         "alunos/<int:id>/laudo/",

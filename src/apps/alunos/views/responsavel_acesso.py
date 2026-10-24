@@ -1,7 +1,8 @@
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiResponse, extend_schema
-from rest_framework import status
+from rest_framework import serializers, status
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,6 +24,14 @@ from apps.alunos.services import (
     vincular_responsavel,
 )
 from apps.alunos.services.codigo_acesso import VALIDADE_TOKEN_SEGUNDOS
+from apps.alunos.views.laudo import (
+    AlunoLaudoRespostaSerializer,
+    AlunoLaudoUploadSerializer,
+    processar_upload_laudo,
+)
+from apps.escolas.services.escola_usuario import config_ia_do_usuario
+from apps.pedagogico.models import PerfilApoio
+from apps.pedagogico.serializers import PerfilApoioSerializer
 
 
 class ResponsavelAcessoView(APIView):
@@ -163,3 +172,72 @@ class ResponsavelConsentimentoRevogarView(_ResponsavelBase):
             )
         revogar_consentimento(consentimento)
         return Response(_estado_consentimento(aluno))
+
+
+class ResponsavelLaudoView(_ResponsavelBase):
+    """O responsável envia o laudo do aluno do seu token; mesmo processamento da professora."""
+
+    parser_classes = [MultiPartParser, FormParser]
+    serializer_class = AlunoLaudoUploadSerializer
+
+    @extend_schema(
+        request=AlunoLaudoUploadSerializer,
+        responses={
+            200: AlunoLaudoRespostaSerializer,
+            400: OpenApiResponse(description="Arquivo inválido."),
+            403: OpenApiResponse(description="Sem consentimento ativo."),
+            502: OpenApiResponse(description="Falha na IA."),
+        },
+    )
+    def post(self, request):
+        aluno = request.user.aluno
+        if not tem_consentimento_ativo(aluno):
+            return Response(
+                {"erro": "Registre o consentimento antes de enviar o laudo."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        escola = aluno.turma.escola if aluno.turma else None
+        return processar_upload_laudo(request, aluno, config_ia_do_usuario(None, escola=escola))
+
+
+class ResponsavelPerfilApoioEdicaoSerializer(serializers.Serializer):
+    necessidades = serializers.ListField(
+        child=serializers.CharField(max_length=500), required=False
+    )
+    estrategias = serializers.ListField(child=serializers.CharField(max_length=500), required=False)
+    observacoes = serializers.CharField(required=False, allow_blank=True)
+
+
+class ResponsavelPerfilApoioView(_ResponsavelBase):
+    """Perfil de apoio ativo do aluno do token, para o responsável conferir e corrigir."""
+
+    serializer_class = PerfilApoioSerializer
+
+    def _perfil(self, request):
+        return (
+            PerfilApoio.objects.filter(aluno=request.user.aluno, ativo=True)
+            .order_by("-created_at")
+            .first()
+        )
+
+    @extend_schema(responses={200: PerfilApoioSerializer, 404: OpenApiResponse()})
+    def get(self, request):
+        perfil = self._perfil(request)
+        if perfil is None:
+            return Response({"detail": "Não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(PerfilApoioSerializer(perfil).data)
+
+    @extend_schema(
+        request=ResponsavelPerfilApoioEdicaoSerializer,
+        responses={200: PerfilApoioSerializer, 404: OpenApiResponse()},
+    )
+    def patch(self, request):
+        perfil = self._perfil(request)
+        if perfil is None:
+            return Response({"detail": "Não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+        entrada = ResponsavelPerfilApoioEdicaoSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        for campo, valor in entrada.validated_data.items():
+            setattr(perfil, campo, valor)
+        perfil.save()
+        return Response(PerfilApoioSerializer(perfil).data)
