@@ -11,7 +11,10 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def admin_client(client):
     admin = get_user_model().objects.create_superuser(
-        email="root@example.com", password="Senha-forte-123", username="Root"
+        matricula="ROOT0001",
+        email="root@example.com",
+        password="Senha-forte-123",
+        username="Root",
     )
     client.force_login(admin)
     return client
@@ -49,4 +52,3 @@ def test_admin_escolas_abre(admin_client):
     assert admin_client.get("/admin/escolas/config/").status_code == 200
     assert admin_client.get("/admin/escolas/escola/").status_code == 200
     assert admin_client.get("/admin/escolas/turma/").status_code == 200
-
