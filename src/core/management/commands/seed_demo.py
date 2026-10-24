@@ -129,7 +129,6 @@ ALUNOS_DEMO = [
             "email": "ana.demo@example.com",
             "telefone": "11991110001",
             "cpf": "12345678901",
-            "endereco": "Rua Demo, 1",
         },
     },
     {
@@ -142,7 +141,6 @@ ALUNOS_DEMO = [
             "email": "bruno.demo@example.com",
             "telefone": "11991110002",
             "cpf": "12345678902",
-            "endereco": "Rua Demo, 2",
         },
     },
     {
@@ -155,7 +153,6 @@ ALUNOS_DEMO = [
             "email": "carla.demo@example.com",
             "telefone": "11991110003",
             "cpf": "12345678903",
-            "endereco": "Rua Demo, 3",
         },
     },
     {
@@ -168,7 +165,6 @@ ALUNOS_DEMO = [
             "email": "diego.demo@example.com",
             "telefone": "11991110004",
             "cpf": "12345678904",
-            "endereco": "Rua Demo, 4",
         },
     },
     {
@@ -181,7 +177,6 @@ ALUNOS_DEMO = [
             "email": "elisa.demo@example.com",
             "telefone": "11991110005",
             "cpf": "12345678905",
-            "endereco": "Rua Demo, 5",
         },
     },
     {
@@ -194,7 +189,6 @@ ALUNOS_DEMO = [
             "email": "fabio.demo@example.com",
             "telefone": "11991110006",
             "cpf": "12345678906",
-            "endereco": "Rua Demo, 6",
         },
     },
 ]

@@ -130,6 +130,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {
         "register": "10/hour",
+        "codigo_acesso": "10/hour",
         "login": "5/min",
         "otp_verify": "5/min",
         "otp_resend": "2/min",

@@ -88,7 +88,6 @@ class ResponsavelFactory(factory.django.DjangoModelFactory):
     email = factory.declarations.Sequence(lambda n: f"responsavel{n}@example.com")
     cpf = factory.declarations.Sequence(lambda n: f"1234567890{n % 9 + 1}")
     telefone = factory.declarations.Sequence(lambda n: f"1198765432{n % 9 + 1}")
-    endereco = factory.declarations.Sequence(lambda n: f"Endereço {n}")
 
 
 class MetaDadosFactory(factory.django.DjangoModelFactory):

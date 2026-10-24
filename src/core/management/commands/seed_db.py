@@ -210,7 +210,6 @@ class Command(BaseCommand):
                         "nome": f"Responsável {fake.name()}",
                         "cpf": resp_cpf,
                         "telefone": f"1198{aluno_seq:07d}"[:11],
-                        "endereco": f"Rua das Acácias, {10 + aluno_seq}",
                     },
                 )
                 if r_created:

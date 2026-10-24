@@ -1,3 +1,12 @@
+from .codigo_acesso import (
+    CodigoInvalido,
+    SessaoResponsavel,
+    emitir_token,
+    gerar_codigo,
+    revogar_codigos_ativos,
+    validar_token,
+    vincular_responsavel,
+)
 from .consentimento import (
     alunos_com_consentimento,
     revogar_consentimento,
@@ -7,7 +16,14 @@ from .laudo import processar_laudo
 
 __all__ = [
     "alunos_com_consentimento",
+    "CodigoInvalido",
+    "emitir_token",
+    "gerar_codigo",
     "processar_laudo",
+    "revogar_codigos_ativos",
     "revogar_consentimento",
+    "SessaoResponsavel",
     "tem_consentimento_ativo",
+    "validar_token",
+    "vincular_responsavel",
 ]
