@@ -14,15 +14,24 @@ from pypdf import PdfReader
 
 MAX_TAMANHO_BYTES = 20 * 1024 * 1024  # 20 MB
 
+
 MIME_TYPES_PERMITIDOS = {
     "application/pdf": "pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
 }
 
 EXTENSOES_PERMITIDAS = {
     ".pdf": "pdf",
     ".docx": "docx",
+    ".jpg": "jpg",
+    ".jpeg": "jpg",
+    ".png": "png",
+    ".webp": "webp",
 }
+
 
 
 class ExtracaoError(Exception):
@@ -55,11 +64,12 @@ def identificar_origem(arquivo) -> str:
     raise ExtracaoError("Formato de arquivo inválido. Envie apenas arquivos PDF ou DOCX.")
 
 
-def extrair_texto(arquivo) -> str:
-    """Extrai o texto de um arquivo PDF ou DOCX inteiramente em memória.
 
-    Valida presença, tamanho (máximo 20 MB) e formato antes de processar.
-    Levanta ExtracaoError em qualquer falha de validação ou leitura.
+def extrair_texto(arquivo) -> str:
+    """Extrai texto de PDF ou DOCX em memória.
+
+    PDFs sem texto extraível retornam string vazia para permitir
+    o processamento posterior por IA multimodal.
     """
     if arquivo is None:
         raise ExtracaoError("Nenhum arquivo foi enviado.")
@@ -72,6 +82,7 @@ def extrair_texto(arquivo) -> str:
 
     if hasattr(arquivo, "seek"):
         arquivo.seek(0)
+
     conteudo_bytes = arquivo.read()
 
     if not conteudo_bytes:
@@ -83,15 +94,20 @@ def extrair_texto(arquivo) -> str:
     stream = BytesIO(conteudo_bytes)
 
     if origem == "pdf":
-        texto = _extrair_pdf(stream)
-    else:
-        texto = _extrair_docx(stream)
+        return _extrair_pdf(stream).strip()
 
-    texto_limpo = texto.strip()
-    if not texto_limpo:
-        raise ExtracaoError("Não foi possível extrair texto do arquivo enviado.")
+    if origem == "docx":
+        texto = _extrair_docx(stream).strip()
+        if not texto:
+            raise ExtracaoError(
+                "Não foi possível extrair texto do arquivo DOCX enviado."
+            )
+        return texto
 
-    return texto_limpo
+    # Imagens serão processadas pelo Gemini na próxima etapa.
+        if origem in {"jpg", "png", "webp"}:
+            return ""
+
 
 
 def _extrair_pdf(stream: BytesIO) -> str:

@@ -1,5 +1,6 @@
 from io import BytesIO
 
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from docx import Document
@@ -274,3 +275,110 @@ def test_extrair_turma_alheia_retorna_400(auth_client, db, user):
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "turma" in response.json()
+
+
+def test_extrair_imagem_com_gemini_mockado(auth_client, db, user, monkeypatch):
+    user.escola = EscolaFactory()
+    user.save()
+
+    capturado = {}
+
+    def fake_multimodal(**kwargs):
+        capturado.update(kwargs)
+        return {
+            "texto_original": "Resolva as questões de matemática.",
+            "titulo": "Questões de matemática",
+            "descricao": "Praticar resolução de problemas.",
+        }
+
+    monkeypatch.setattr(
+        "apps.pedagogico.views.atividade_extrair.extrair_atividade_multimodal",
+        fake_multimodal,
+    )
+
+    arquivo = SimpleUploadedFile(
+        "atividade.png",
+        b"conteudo de imagem para teste",
+        content_type="image/png",
+    )
+
+    response = auth_client.post(
+        EXTRAIR_URL,
+        {"arquivo": arquivo},
+        format="multipart",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["origem"] == "png"
+    assert response.data["texto_original"] == (
+        "Resolva as questões de matemática."
+    )
+    assert response.data["titulo"] == "Questões de matemática"
+    assert capturado["mime_type"] == "image/png"
+    assert capturado["api_key"] == user.escola.config.api_key
+    assert capturado["conteudo_bytes"] == b"conteudo de imagem para teste"
+    assert Atividade.objects.count() == 0
+
+@pytest.mark.parametrize(
+    ("nome", "mime_type", "origem"),
+    [
+        ("atividade.jpg", "image/jpeg", "jpg"),
+        ("atividade.png", "image/png", "png"),
+        ("atividade.webp", "image/webp", "webp"),
+    ],
+)
+def test_extrair_imagem_por_formato(
+    auth_client, db, user, monkeypatch, nome, mime_type, origem
+):
+    user.escola = EscolaFactory()
+    user.save()
+
+    capturado = {}
+
+    def fake_multimodal(**kwargs):
+        capturado.update(kwargs)
+        return {
+            "texto_original": "Resolva as questões.",
+            "titulo": "Questões",
+            "descricao": "Praticar os exercícios propostos.",
+        }
+
+    monkeypatch.setattr(
+        "apps.pedagogico.views.atividade_extrair.extrair_atividade_multimodal",
+        fake_multimodal,
+    )
+
+    arquivo = SimpleUploadedFile(
+        nome,
+        b"bytes de teste da imagem",
+        content_type=mime_type,
+    )
+
+    response = auth_client.post(
+        EXTRAIR_URL,
+        {"arquivo": arquivo},
+        format="multipart",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["origem"] == origem
+    assert capturado["mime_type"] == mime_type
+    assert capturado["conteudo_bytes"] == b"bytes de teste da imagem"
+
+def test_rejeita_arquivo_acima_limite_real(auth_client, db):
+    conteudo = b"x" * (MAX_TAMANHO_BYTES + 1)
+
+    arquivo = SimpleUploadedFile(
+        "atividade.png",
+        conteudo,
+        content_type="image/png",
+    )
+
+    response = auth_client.post(
+        EXTRAIR_URL,
+        {"arquivo": arquivo},
+        format="multipart",
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "20 MB" in str(response.data)

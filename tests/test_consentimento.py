@@ -159,7 +159,8 @@ def test_envio_trabalho_de_aluno_sem_consentimento_descarta_analise(auth_client,
             format="multipart",
         )
     assert resp.status_code == status.HTTP_201_CREATED
-    assert ia.call_args.kwargs["nomes_alunos_turma"] == []
+    # Nenhum nome da turma vai ao prompt da IA (B#83).
+    assert "nomes_alunos_turma" not in ia.call_args.kwargs
     trabalho = Trabalho.objects.get()
     assert trabalho.identificacao == Trabalho.IdentificacaoChoices.SEM_CONSENTIMENTO
     assert trabalho.aluno is None
