@@ -9,6 +9,8 @@ from .responsavel_acesso import (
     ResponsavelAlunoView,
     ResponsavelConsentimentoRevogarView,
     ResponsavelConsentimentoView,
+    ResponsavelLaudoView,
+    ResponsavelPerfilApoioView,
 )
 
 __all__ = [
@@ -22,5 +24,7 @@ __all__ = [
     "ResponsavelAlunoView",
     "ResponsavelConsentimentoRevogarView",
     "ResponsavelConsentimentoView",
+    "ResponsavelLaudoView",
+    "ResponsavelPerfilApoioView",
     "ResponsavelViewSet",
 ]

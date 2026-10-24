@@ -120,31 +120,31 @@ class AlunoLaudoView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        contexto: dict = {}
-        entrada = AlunoLaudoUploadSerializer(data=request.data, context=contexto)
-        entrada.is_valid(raise_exception=True)
-
-        arquivo = entrada.validated_data["arquivo"]
-        try:
-            arquivo_bytes = arquivo.read()
-        finally:
-            arquivo.close()
-        mime = contexto["mime"]
-
         escola = aluno.turma.escola if aluno.turma else None
         config = config_ia_do_usuario(request.user, escola=escola)
+        return processar_upload_laudo(request, aluno, config)
 
-        try:
-            resultado = processar_laudo(
-                aluno=aluno,
-                arquivo_bytes=arquivo_bytes,
-                mime=mime,
-                config=config,
-            )
-        except LLMError as erro:
-            return Response(
-                {"erro": str(erro)},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
 
-        return Response(resultado, status=status.HTTP_200_OK)
+def processar_upload_laudo(request, aluno: Aluno, config) -> Response:
+    """Valida o arquivo e processa o laudo em memória (professora ou responsável)."""
+    contexto: dict = {}
+    entrada = AlunoLaudoUploadSerializer(data=request.data, context=contexto)
+    entrada.is_valid(raise_exception=True)
+
+    arquivo = entrada.validated_data["arquivo"]
+    try:
+        arquivo_bytes = arquivo.read()
+    finally:
+        arquivo.close()
+
+    try:
+        resultado = processar_laudo(
+            aluno=aluno,
+            arquivo_bytes=arquivo_bytes,
+            mime=contexto["mime"],
+            config=config,
+        )
+    except LLMError as erro:
+        return Response({"erro": str(erro)}, status=status.HTTP_502_BAD_GATEWAY)
+
+    return Response(resultado, status=status.HTTP_200_OK)
