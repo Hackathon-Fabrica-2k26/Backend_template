@@ -15,7 +15,7 @@ from apps.alunos.models import Aluno, MetaDados, Responsavel
 from apps.escolas.models import Config, Escola, Turma
 from apps.pedagogico.models import Relatorio
 
-SENHA_PROFESSOR = "demo-senha-123"
+SENHA_PROFESSOR = "user123"
 EMAIL_PROFESSOR = "professor@demo.com"
 NOME_ESCOLA = "Escola Marsupi Demo"
 
