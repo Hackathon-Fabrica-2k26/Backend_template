@@ -4,14 +4,17 @@ O arquivo é processado exclusivamente em memória (bytes) e nunca é gravado em
 disco, banco de dados ou logs (LGPD).
 """
 
+import logging
 import re
 
 from apps.pedagogico.services.llm import (
     MAX_RESPOSTA_TOKENS,
-    MODELO_PADRAO,
     LLMError,
     _extrair_json,
+    normalizar_modelo,
 )
+
+logger = logging.getLogger(__name__)
 
 MENSAGEM_ERRO_PADRAO = (
     "Não foi possível reconhecer os nomes na imagem agora. Tente novamente em instantes."
@@ -60,17 +63,33 @@ def reconhecer_nomes(
     api_key = getattr(config, "api_key", "") if config is not None else ""
     if not api_key:
         raise LLMError("Nenhuma credencial de IA configurada para esta escola.")
-    modelo = (getattr(config, "modelo", "") if config is not None else "") or MODELO_PADRAO
+    modelo = normalizar_modelo(getattr(config, "modelo", "") if config is not None else "")
 
     try:
         resposta = _pedir_ocr_ao_gemini(imagem_bytes, mime, api_key, modelo)
-        dados = _extrair_json(resposta)
-    except LLMError as erro:
-        raise LLMError(MENSAGEM_ERRO_PADRAO) from erro
+    except LLMError:
+        raise
     except Exception as erro:
+        logger.warning(
+            "Chamada: erro inesperado ao chamar o Gemini (modelo=%s): %s: %s",
+            modelo,
+            type(erro).__name__,
+            erro,
+        )
+        raise LLMError(MENSAGEM_ERRO_PADRAO) from erro
+    try:
+        dados = _extrair_json(resposta)
+    except Exception as erro:
+        # Não registra o conteúdo (pode ter nomes de alunos), só o tamanho.
+        logger.warning(
+            "Chamada: resposta do Gemini não é JSON válido (modelo=%s, %d caracteres)",
+            modelo,
+            len(resposta),
+        )
         raise LLMError(MENSAGEM_ERRO_PADRAO) from erro
 
     if not isinstance(dados, dict) or not isinstance(dados.get("nomes"), list):
+        logger.warning("Chamada: JSON do Gemini sem a lista 'nomes' (modelo=%s)", modelo)
         raise LLMError(MENSAGEM_ERRO_PADRAO)
 
     return _limpar_nomes(dados["nomes"])
@@ -93,8 +112,27 @@ def _pedir_ocr_ao_gemini(imagem_bytes: bytes, mime: str, api_key: str, modelo: s
             ),
         )
     except Exception as erro:
+        # A chave nunca entra na mensagem; registra tipo e detalhe do erro do Google
+        # (modelo inexistente, chave inválida, rede/TLS bloqueados, cota...).
+        logger.warning(
+            "Chamada: falha ao chamar o Gemini (modelo=%s): %s: %s",
+            modelo,
+            type(erro).__name__,
+            erro,
+        )
         raise LLMError(MENSAGEM_ERRO_PADRAO) from erro
-    return resposta.text or ""
+
+    texto = resposta.text or ""
+    if not texto:
+        motivo = ""
+        candidatos = getattr(resposta, "candidates", None) or []
+        if candidatos:
+            motivo = str(getattr(candidatos[0], "finish_reason", ""))
+        logger.warning(
+            "Chamada: Gemini devolveu resposta vazia (modelo=%s, motivo=%s)", modelo, motivo
+        )
+        raise LLMError(MENSAGEM_ERRO_PADRAO)
+    return texto
 
 
 def _normalizar_confianca(valor) -> float:
@@ -115,7 +153,11 @@ def _limpar_nomes(itens: list) -> list[dict[str, str | float]]:
     for item in itens:
         if isinstance(item, dict):
             bruto = item.get("nome")
-            confianca = _normalizar_confianca(item.get("confianca"))
+            if item.get("confianca") is None and isinstance(item.get("duvida"), bool):
+                # Formato {"nome", "duvida"}: dúvida vira confiança baixa.
+                confianca = 0.5 if item["duvida"] else 1.0
+            else:
+                confianca = _normalizar_confianca(item.get("confianca"))
         elif isinstance(item, str):
             bruto = item
             confianca = 1.0
