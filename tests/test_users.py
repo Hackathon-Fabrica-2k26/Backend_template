@@ -286,3 +286,16 @@ def test_reenvio_otp_respeita_intervalo(api_client, user):
     )
 
     assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_editar_perfil_usuario(api_client, user):
+    api_client.force_authenticate(user=user)
+    resp = api_client.patch(
+        "/api/auth/me/",
+        {"name": "Professora Atualizada", "email": "atualizada@escola.com"},
+    )
+    assert resp.status_code == 200
+    user.refresh_from_db()
+    assert user.name == "Professora Atualizada"
+    assert user.email == "atualizada@escola.com"
