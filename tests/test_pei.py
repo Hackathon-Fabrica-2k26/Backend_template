@@ -43,7 +43,6 @@ def _criar_cenario_pei(user):
         nome="Marcos Ribeiro",
         cpf="12345678901",
         telefone="47999991111",
-        endereco="Rua das Palmeiras, 42",
     )
     aluno = Aluno.objects.create(
         nome="Helena Ribeiro",

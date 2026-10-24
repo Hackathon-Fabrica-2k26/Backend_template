@@ -139,7 +139,8 @@ def _normalizar_lista_strings(valor: Any) -> list[str]:
 def montar_contexto_pei(aluno: Aluno) -> dict[str, Any]:
     """Coleta e anonimiza PerfilApoio ativo, Relatorios e descricao_ia dos Trabalhos do aluno."""
     nome_aluno = aluno.nome or ""
-    nome_responsavel = aluno.responsavel.nome if getattr(aluno, "responsavel", None) else ""
+    responsavel = getattr(aluno, "responsavel", None) or aluno.responsaveis.order_by("pk").first()
+    nome_responsavel = responsavel.nome if responsavel else ""
     nome_turma = aluno.turma.nome if getattr(aluno, "turma", None) else ""
 
     perfil_ativo = (

@@ -83,6 +83,144 @@ paths:
               schema:
                 $ref: '#/components/schemas/Aluno'
           description: ''
+  /api/alunos/{id}/codigo-acesso/:
+    post:
+      operationId: alunos_codigo_acesso_create
+      description: Gera o código de acesso do responsável (8 caracteres, 7 dias) e
+        revoga o anterior.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - alunos
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodigoAcessoGerado'
+          description: ''
+        '404':
+          description: Aluno não encontrado.
+  /api/alunos/{id}/codigo-acesso/revogar/:
+    post:
+      operationId: alunos_codigo_acesso_revogar_create
+      description: Revoga os códigos pendentes do aluno.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - alunos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodigoAcessoRevogado'
+          description: ''
+        '404':
+          description: Aluno não encontrado.
+  /api/alunos/{id}/pontos-atencao/:
+    get:
+      operationId: alunos_pontos_atencao_retrieve
+      description: 'Gera alertas pedagógicos cautelosos para conversa com a família
+        somente quando o aluno possui 3 ou mais trabalhos analisados com descrição
+        da IA. Envia ao Gemini apenas os textos `descricao_ia` anonimizados (sem nome,
+        sem turma e sem datas). Com menos de 3 trabalhos analisados, devolve 200 com
+        `pontos: []` e mensagem orientativa.'
+      summary: Obter pontos de atenção do aluno sob demanda
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: ID do aluno.
+        required: true
+      tags:
+      - alunos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PontosAtencaoResposta'
+          description: ''
+        '404':
+          description: Aluno não encontrado ou não pertence às turmas do professor.
+        '502':
+          description: Falha ao comunicar com o provedor de IA.
+  /api/alunos/{id}/rascunho-pei/:
+    post:
+      operationId: alunos_rascunho_pei_create
+      description: Consolida sob demanda o PerfilApoio ativo, os Relatorios e as descrições
+        de Trabalhos do aluno (anonimizados) e solicita ao Gemini um rascunho estruturado
+        de PEI em linguagem estritamente pedagógica (sem diagnóstico clínico e sem
+        persistir dados).
+      summary: Gerar rascunho de PEI do aluno sob demanda
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: ID do aluno.
+        required: true
+      tags:
+      - alunos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RascunhoPEIResposta'
+          description: ''
+        '404':
+          description: Aluno não encontrado ou não pertence às turmas do professor.
+        '502':
+          description: Falha ao comunicar com o provedor de IA.
+  /api/alunos/{id}/rascunho-pei/pdf/:
+    get:
+      operationId: alunos_rascunho_pei_pdf_retrieve
+      description: Gera o rascunho de PEI sob demanda e retorna o documento em formato
+        PDF com aviso ético de revisão da professora e da coordenação, sem CPF e sem
+        dados do responsável.
+      summary: Baixar PDF do rascunho de PEI do aluno sob demanda
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: ID do aluno.
+        required: true
+      tags:
+      - alunos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: PDF do rascunho de PEI gerado sob demanda.
+        '404':
+          description: Aluno não encontrado ou não pertence às turmas do professor.
+        '502':
+          description: Falha ao comunicar com o provedor de IA.
   /api/alunos/{id}/:
     get:
       operationId: alunos_retrieve
@@ -755,8 +893,8 @@ paths:
   /api/chamada/reconhecer/:
     post:
       operationId: chamada_reconhecer_create
-      description: Reconhece os nomes dos alunos a partir da foto da chamada sem gravar
-        a imagem.
+      description: Reconhece os nomes dos alunos a partir da foto ou PDF da chamada
+        sem gravar o arquivo.
       tags:
       - chamada
       requestBody:
@@ -949,6 +1087,134 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/consentimentos/:
+    get:
+      operationId: consentimentos_list
+      description: Consentimento do responsável; a revogação apaga os dados derivados
+        da IA.
+      parameters:
+      - in: query
+        name: aluno
+        schema:
+          type: integer
+      - in: query
+        name: finalidade
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Qual campo usar ao ordenar os resultados.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: Um número de página dentro do conjunto de resultados paginado.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: Um termo de busca.
+        schema:
+          type: string
+      tags:
+      - consentimentos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedConsentimentoList'
+          description: ''
+    post:
+      operationId: consentimentos_create
+      description: Consentimento do responsável; a revogação apaga os dados derivados
+        da IA.
+      tags:
+      - consentimentos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentimentoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsentimentoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsentimentoRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consentimento'
+          description: ''
+  /api/consentimentos/{id}/:
+    get:
+      operationId: consentimentos_retrieve
+      description: Consentimento do responsável; a revogação apaga os dados derivados
+        da IA.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este consentimento.
+        required: true
+      tags:
+      - consentimentos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consentimento'
+          description: ''
+  /api/consentimentos/{id}/revogar/:
+    post:
+      operationId: consentimentos_revogar_create
+      description: Consentimento do responsável; a revogação apaga os dados derivados
+        da IA.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este consentimento.
+        required: true
+      tags:
+      - consentimentos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentimentoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsentimentoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsentimentoRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consentimento'
+          description: ''
   /api/escolas/:
     get:
       operationId: escolas_list
@@ -2009,6 +2275,87 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/responsavel/acesso/:
+    post:
+      operationId: responsavel_acesso_create
+      description: Troca o código do aluno por um token de 24h (sem conta). Limitado
+        por IP.
+      tags:
+      - responsavel
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResponsavelAcessoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResponsavelAcessoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResponsavelAcessoRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsavelToken'
+          description: ''
+        '400':
+          description: Código inválido, expirado, usado ou revogado.
+        '429':
+          description: Muitas tentativas.
+  /api/responsavel/aluno/:
+    get:
+      operationId: responsavel_aluno_retrieve
+      description: 'Dados mínimos do aluno do responsável: nome, turma e se há consentimento.'
+      tags:
+      - responsavel
+      security:
+      - responsavelAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsavelAluno'
+          description: ''
+  /api/responsavel/consentimento/:
+    post:
+      operationId: responsavel_consentimento_create
+      description: Registra o consentimento do responsável para o aluno do seu token.
+      tags:
+      - responsavel
+      security:
+      - responsavelAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsavelConsentimento'
+          description: ''
+        '400':
+          description: Já existe consentimento ativo.
+  /api/responsavel/consentimento/revogar/:
+    post:
+      operationId: responsavel_consentimento_revogar_create
+      description: Revoga o consentimento ativo e apaga os dados derivados da IA.
+      tags:
+      - responsavel
+      security:
+      - responsavelAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsavelConsentimento'
+          description: ''
+        '400':
+          description: Não há consentimento ativo.
   /api/trabalhos/:
     get:
       operationId: trabalhos_list
@@ -2780,6 +3127,8 @@ components:
         editada_manual:
           type: boolean
           title: Editada manualmente
+        adaptacoes_feitas:
+          title: Adaptações feitas
         aprovada_por:
           type: integer
           readOnly: true
@@ -2841,6 +3190,8 @@ components:
         editada_manual:
           type: boolean
           title: Editada manualmente
+        adaptacoes_feitas:
+          title: Adaptações feitas
         alunos:
           type: array
           items:
@@ -2863,9 +3214,23 @@ components:
     BlankEnum:
       enum:
       - ''
+    ChamadaNomeItem:
+      type: object
+      description: Item reconhecido na chamada com nome e índice de confiança.
+      properties:
+        nome:
+          type: string
+        confianca:
+          type: number
+          format: double
+          maximum: 1.0
+          minimum: 0.0
+      required:
+      - confianca
+      - nome
     ChamadaReconhecerRequest:
       type: object
-      description: Valida o arquivo de imagem enviado no multipart/form-data.
+      description: Valida o arquivo (imagem ou PDF) enviado no multipart/form-data.
       properties:
         imagem:
           type: string
@@ -2874,14 +3239,47 @@ components:
       - imagem
     ChamadaReconhecerResposta:
       type: object
-      description: Lista de nomes reconhecidos na imagem da chamada.
+      description: Lista de nomes reconhecidos na chamada (com confiança e lista de
+        texto).
       properties:
         nomes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChamadaNomeItem'
+        nomes_texto:
           type: array
           items:
             type: string
       required:
       - nomes
+      - nomes_texto
+    CodigoAcessoGerado:
+      type: object
+      properties:
+        codigo:
+          type: string
+          readOnly: true
+          description: Exibido apenas nesta resposta.
+        gerado_em:
+          type: string
+          format: date-time
+          readOnly: true
+        expira_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - codigo
+      - expira_em
+      - gerado_em
+    CodigoAcessoRevogado:
+      type: object
+      properties:
+        revogados:
+          type: integer
+          readOnly: true
+      required:
+      - revogados
     Config:
       type: object
       properties:
@@ -2911,6 +3309,61 @@ components:
       required:
       - api_key
       - modelo
+    Consentimento:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        aluno:
+          type: integer
+        responsavel:
+          type: integer
+          readOnly: true
+          nullable: true
+          title: Responsável
+        finalidade:
+          type: string
+          maxLength: 100
+        versao_texto:
+          type: string
+          title: Versão do texto
+          maxLength: 20
+        aceito_em:
+          type: string
+          format: date-time
+          readOnly: true
+        revogado_em:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        ativo:
+          type: boolean
+          readOnly: true
+      required:
+      - aceito_em
+      - aluno
+      - ativo
+      - id
+      - responsavel
+      - revogado_em
+    ConsentimentoRequest:
+      type: object
+      properties:
+        aluno:
+          type: integer
+        finalidade:
+          type: string
+          minLength: 1
+          maxLength: 100
+        versao_texto:
+          type: string
+          minLength: 1
+          title: Versão do texto
+          maxLength: 20
+      required:
+      - aluno
     EnvioTrabalhos:
       type: object
       properties:
@@ -3265,6 +3718,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Config'
+    PaginatedConsentimentoList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Consentimento'
     PaginatedEscolaList:
       type: object
       required:
@@ -3549,6 +4025,8 @@ components:
         editada_manual:
           type: boolean
           title: Editada manualmente
+        adaptacoes_feitas:
+          title: Adaptações feitas
         alunos:
           type: array
           items:
@@ -3634,21 +4112,19 @@ components:
           minLength: 1
           maxLength: 100
         email:
-          type: string
-          format: email
-          minLength: 1
           title: E-mail
-          maxLength: 255
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 255
+          - type: string
+            maxLength: 0
         telefone:
           type: string
           maxLength: 20
         cpf:
           type: string
           maxLength: 11
-        endereco:
-          type: string
-          title: Endereço
-          maxLength: 255
     PatchedTrabalhoConfirmacaoRequest:
       type: object
       properties:
@@ -3764,6 +4240,70 @@ components:
         * `I` - Influência
         * `S` - Estabilidade
         * `C` - Conformidade
+    PontoAtencaoItem:
+      type: object
+      properties:
+        padrao:
+          type: string
+        texto:
+          type: string
+        base_pedagogica:
+          type: string
+        total_trabalhos:
+          type: integer
+          minimum: 1
+      required:
+      - base_pedagogica
+      - padrao
+      - texto
+      - total_trabalhos
+    PontosAtencaoResposta:
+      type: object
+      properties:
+        pontos:
+          type: array
+          items:
+            $ref: '#/components/schemas/PontoAtencaoItem'
+        disclaimer:
+          type: string
+        minimo_trabalhos:
+          type: integer
+        mensagem:
+          type: string
+      required:
+      - disclaimer
+      - minimo_trabalhos
+      - pontos
+    RascunhoPEIResposta:
+      type: object
+      properties:
+        objetivos:
+          type: array
+          items:
+            type: string
+        adaptacoes:
+          type: array
+          items:
+            type: string
+        estrategias:
+          type: array
+          items:
+            type: string
+        acompanhamento:
+          type: array
+          items:
+            type: string
+        observacoes:
+          type: string
+        disclaimer:
+          type: string
+      required:
+      - acompanhamento
+      - adaptacoes
+      - disclaimer
+      - estrategias
+      - objetivos
+      - observacoes
     Register:
       type: object
       properties:
@@ -3896,24 +4436,87 @@ components:
           type: string
           maxLength: 100
         email:
-          type: string
-          format: email
           title: E-mail
-          maxLength: 255
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 255
+          - type: string
+            maxLength: 0
         telefone:
           type: string
           maxLength: 20
         cpf:
           type: string
           maxLength: 11
-        endereco:
-          type: string
-          title: Endereço
-          maxLength: 255
       required:
-      - email
       - id
       - nome
+    ResponsavelAcessoRequest:
+      type: object
+      properties:
+        codigo:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 32
+        nome:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 100
+        email:
+          writeOnly: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 255
+          - type: string
+            maxLength: 0
+        parentesco:
+          type: string
+          writeOnly: true
+          maxLength: 30
+      required:
+      - codigo
+      - nome
+    ResponsavelAluno:
+      type: object
+      properties:
+        nome:
+          type: string
+          readOnly: true
+        turma:
+          type: string
+          readOnly: true
+          nullable: true
+        consentimento_ativo:
+          type: boolean
+          readOnly: true
+      required:
+      - consentimento_ativo
+      - nome
+      - turma
+    ResponsavelConsentimento:
+      type: object
+      properties:
+        consentimento_ativo:
+          type: boolean
+          readOnly: true
+        aceito_em:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        revogado_em:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - aceito_em
+      - consentimento_ativo
+      - revogado_em
     ResponsavelRequest:
       type: object
       properties:
@@ -3922,24 +4525,37 @@ components:
           minLength: 1
           maxLength: 100
         email:
-          type: string
-          format: email
-          minLength: 1
           title: E-mail
-          maxLength: 255
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 255
+          - type: string
+            maxLength: 0
         telefone:
           type: string
           maxLength: 20
         cpf:
           type: string
           maxLength: 11
-        endereco:
-          type: string
-          title: Endereço
-          maxLength: 255
       required:
-      - email
       - nome
+    ResponsavelToken:
+      type: object
+      properties:
+        token:
+          type: string
+          readOnly: true
+        tipo:
+          type: string
+          readOnly: true
+        expira_em_segundos:
+          type: integer
+          readOnly: true
+      required:
+      - expira_em_segundos
+      - tipo
+      - token
     TipoEnum:
       enum:
       - atividade
@@ -4203,3 +4819,8 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    responsavelAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Formato: `Responsavel <token>` (token de 24h).'
