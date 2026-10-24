@@ -1,9 +1,15 @@
+from datetime import date
+
 from django.conf import settings
 from django.db import models
 
 from core.models import BaseModel
 
 from .escola import Escola
+
+
+def ano_letivo_atual() -> int:
+    return date.today().year
 
 
 class Turma(BaseModel):
@@ -19,6 +25,10 @@ class Turma(BaseModel):
         max_length=10,
         choices=TurnoChoices.choices,
         default=TurnoChoices.MANHA,
+    )
+    ano_letivo = models.PositiveSmallIntegerField(
+        "ano letivo",
+        default=ano_letivo_atual,
     )
     escola = models.ForeignKey(
         Escola,

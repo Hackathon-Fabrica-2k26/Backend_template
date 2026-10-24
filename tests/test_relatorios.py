@@ -144,11 +144,9 @@ def test_relatorios_por_aluno_filtra_por_atividade(
     auth_client, db, user
 ):
     aluno, _ = _cria_turmas_com_aluno(user)
-    relatorio_vinculado = RelatorioFactory(aluno=aluno)
+    atividade = AtividadeFactory(turma=aluno.turma, criada_por=user)
+    relatorio_vinculado = RelatorioFactory(aluno=aluno, atividade=atividade)
     relatorio_sem_vinculo = RelatorioFactory(aluno=aluno)
-
-    atividade = AtividadeFactory(aluno=aluno)
-    atividade.relatorios.add(relatorio_vinculado)
 
     url = reverse("aluno-relatorios", args=[aluno.pk])
     response = auth_client.get(url, {"atividade": atividade.pk})

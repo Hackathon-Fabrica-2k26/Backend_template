@@ -263,17 +263,29 @@ class Command(BaseCommand):
                     relatorio = aluno.relatorios.first()
                     stats["Relatórios"]["existentes"] += 1
 
-                # Atividade pedagógica adaptada
+                # Atividade pedagógica da turma
+                prof_criador = turma.professores.first() or _admin_user
                 atividade, ativ_created = Atividade.objects.get_or_create(
-                    nome=f"Atividade Adaptada {perfil} - {aluno.nome}",
-                    aluno=aluno,
-                    defaults={"tipo": f"Reforço Perfil {perfil}"},
+                    titulo=f"Atividade Adaptada {perfil} - {aluno.nome}",
+                    turma=turma,
+                    defaults={
+                        "criada_por": prof_criador,
+                        "origem": Atividade.OrigemChoices.TEXTO,
+                        "texto_original": (
+                            f"Atividade pedagógica estruturada para o perfil {perfil}."
+                        ),
+                        "objetivo": f"Reforço Perfil {perfil}",
+                        "status": Atividade.StatusChoices.APROVADA,
+                    },
                 )
                 if ativ_created:
-                    atividade.relatorios.add(relatorio)
                     stats["Atividades"]["criados"] += 1
                 else:
                     stats["Atividades"]["existentes"] += 1
+
+                if relatorio is not None and relatorio.atividade_id != atividade.id:
+                    relatorio.atividade = atividade
+                    relatorio.save()
 
                 aluno_seq += 1
 

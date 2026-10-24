@@ -103,6 +103,7 @@ def test_turno_e_total_estudantes_conta_apenas_alunos_ativos(auth_client, user):
 
     AlunoFactory(nome="Ativo 1", turma=turma)
     AlunoFactory(nome="Ativo 2", turma=turma)
+    AlunoFactory(nome="Inativo", turma=turma, ativo=False)
     excluido = AlunoFactory(nome="Excluído", turma=turma)
     excluido.delete()
     AlunoFactory(nome="Aluno de Outra Turma", turma=turma_outro)
@@ -116,6 +117,21 @@ def test_turno_e_total_estudantes_conta_apenas_alunos_ativos(auth_client, user):
     assert item["turno"] == "tarde"
     assert item["turno_display"] == "Tarde"
     assert item["total_estudantes"] == 2
+
+
+def test_turma_ano_letivo_default_e_filtro(auth_client, user):
+    from datetime import date
+
+    turma_2025 = TurmaFactory(nome="Turma 2025", ano_letivo=2025, professores=[user])
+    turma_atual = TurmaFactory(nome="Turma Atual", professores=[user])
+
+    assert turma_atual.ano_letivo == date.today().year
+
+    resp = auth_client.get(URL_TURMAS, {"ano_letivo": 2025})
+    assert resp.status_code == 200
+    ids = [t["id"] for t in resp.json()["results"]]
+    assert ids == [turma_2025.id]
+    assert resp.json()["results"][0]["ano_letivo"] == 2025
 
 
 def test_api_key_nao_volta_na_resposta(auth_client, user):

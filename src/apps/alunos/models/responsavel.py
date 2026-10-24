@@ -7,7 +7,7 @@ class Responsavel(BaseModel):
     nome = models.CharField("nome", max_length=100)
     email = models.EmailField("e-mail", max_length=255, unique=True)
     telefone = models.CharField("telefone", max_length=20, blank=True)
-    cpf = models.CharField("CPF", max_length=11, unique=True)
+    cpf = models.CharField("CPF", max_length=11, blank=True, default="")
     endereco = models.CharField("endereço", max_length=255, blank=True)
 
     class Meta(BaseModel.Meta):
