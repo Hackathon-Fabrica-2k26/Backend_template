@@ -27,8 +27,8 @@ from apps.pedagogico.services import DISCLAIMER
 
 class AlunoViewSet(viewsets.ModelViewSet):
     serializer_class = AlunoSerializer
-    filterset_fields = ["turma"]
-    search_fields = ["nome"]
+    filterset_fields = ["turma", "ativo"]
+    search_fields = ["nome", "matricula"]
     ordering_fields = ["nome", "created_at"]
 
     @action(detail=True, methods=["get"], url_path="relatorios")
@@ -44,10 +44,7 @@ class AlunoViewSet(viewsets.ModelViewSet):
             relatorios = relatorios.filter(tipo=tipo)
 
         if atividade_id:
-            relatorios = relatorios.filter(
-                atividades__id=atividade_id,
-                atividades__aluno=aluno,
-            )
+            relatorios = relatorios.filter(atividade_id=atividade_id)
 
         relatorios = relatorios.distinct().order_by("-created_at")
 
@@ -55,11 +52,12 @@ class AlunoViewSet(viewsets.ModelViewSet):
             {
                 "id": relatorio.pk,
                 "aluno": relatorio.aluno_id,
+                "atividade": relatorio.atividade_id,
                 "tipo": relatorio.tipo,
                 "dados": relatorio.dados,
                 "created_at": relatorio.created_at,
                 "updated_at": relatorio.updated_at,
-                "disclaimer": DISCLAIMER,
+                "disclaimer": relatorio.disclaimer or DISCLAIMER,
             }
             for relatorio in relatorios
         ]
@@ -192,7 +190,12 @@ class AlunoViewSet(viewsets.ModelViewSet):
                     "relatorios",
                     filter=Q(relatorios__deleted__isnull=True),
                     distinct=True,
-                )
+                ),
+                total_trabalhos=Count(
+                    "trabalhos",
+                    filter=Q(trabalhos__deleted__isnull=True),
+                    distinct=True,
+                ),
             )
             .distinct()
         )

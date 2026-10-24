@@ -15,6 +15,7 @@ class TurmaSerializer(serializers.ModelSerializer):
             "nome",
             "turno",
             "turno_display",
+            "ano_letivo",
             "total_estudantes",
             "escola",
             "professores",

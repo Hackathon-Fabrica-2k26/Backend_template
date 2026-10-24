@@ -17,7 +17,14 @@ from django.db import transaction
 
 from apps.alunos.models import Aluno, MetaDados, Responsavel
 from apps.escolas.models import Config, Escola, Turma
-from apps.pedagogico.models import Relatorio
+from apps.escolas.models.turma import ano_letivo_atual
+from apps.pedagogico.models import (
+    Atividade,
+    AtividadeVariacao,
+    PerfilApoio,
+    Relatorio,
+    VariacaoAluno,
+)
 
 SENHA_PROFESSOR_PADRAO = "demo-senha-123"
 API_KEY_PADRAO = "demo-api-key-troque-no-admin"
@@ -233,23 +240,34 @@ class Command(BaseCommand):
 
         # 2 turmas, com o professor ligado nas duas
         turmas = {}
+        ano_atual = ano_letivo_atual()
         for nome_turma in ("Turma A", "Turma B"):
-            turma, _ = Turma.objects.get_or_create(nome=nome_turma, escola=escola)
+            turma, _ = Turma.objects.get_or_create(
+                nome=nome_turma,
+                escola=escola,
+                defaults={"ano_letivo": ano_atual},
+            )
             turma.professores.add(professor)
             turmas[nome_turma] = turma
 
-        # 6 alunos com responsável e perfil DISC
+        # 6 alunos com responsável, matrícula e perfil DISC
         alunos = {}
-        for dados in ALUNOS_DEMO:
+        for idx, dados in enumerate(ALUNOS_DEMO, start=1):
             responsavel, _ = Responsavel.objects.get_or_create(
                 email=dados["responsavel"]["email"],
                 defaults=dados["responsavel"],
             )
+            matricula_aluno = f"MAT{ano_atual}{idx:03d}"
             aluno, _ = Aluno.objects.get_or_create(
                 nome=dados["nome"],
                 turma=turmas[dados["turma"]],
-                defaults={"responsavel": responsavel},
+                defaults={
+                    "responsavel": responsavel,
+                    "matricula": matricula_aluno,
+                },
             )
+            if not aluno.matricula:
+                aluno.matricula = matricula_aluno
             if aluno.responsavel != responsavel:
                 aluno.responsavel = responsavel
             if aluno.meta_dados is None:
@@ -261,13 +279,78 @@ class Command(BaseCommand):
 
             alunos[dados["nome"]] = aluno
 
+        # Perfis de apoio para 2 alunos
+        PERFIS_APOIO_DEMO = {
+            "Aluno Alfa": {
+                "necessidades": ["Apoio visual em enunciados", "Pausas ativas regulares"],
+                "estrategias": ["Usar esquemas ilustrados", "Dividir instruções em etapas"],
+                "observacoes": "Engaja muito com temas de astronomia.",
+            },
+            "Aluno Delta": {
+                "necessidades": ["Metas curtas e visíveis", "Desafios objetivos"],
+                "estrategias": ["Oferecer escolhas de tarefa", "Rodízio de liderança em grupo"],
+                "observacoes": "Responde bem a desafios curtos.",
+            },
+        }
+        for nome_aluno, dados_perfil in PERFIS_APOIO_DEMO.items():
+            aluno = alunos[nome_aluno]
+            PerfilApoio.objects.get_or_create(
+                aluno=aluno,
+                ativo=True,
+                defaults=dados_perfil,
+            )
+
+        # 1 atividade para a Turma A com 2 variações (prova_v1 e prova_v2)
+        atividade_demo, _ = Atividade.objects.get_or_create(
+            turma=turmas["Turma A"],
+            titulo="Missão Espacial: Frações e Constelações",
+            defaults={
+                "criada_por": professor,
+                "origem": Atividade.OrigemChoices.PDF,
+                "texto_original": (
+                    "Resolva os problemas de frações observando o mapa de constelações."
+                ),
+                "objetivo": "Trabalhar frações equivalentes com apoio visual.",
+                "status": Atividade.StatusChoices.VARIACOES_GERADAS,
+            },
+        )
+        v1, _ = AtividadeVariacao.objects.get_or_create(
+            atividade=atividade_demo,
+            numero=1,
+            defaults={
+                "rotulo": "prova_v1",
+                "eh_geral": True,
+                "conteudo": "Versão geral da atividade de frações.",
+                "status": AtividadeVariacao.StatusChoices.APROVADA,
+                "aprovada_por": professor,
+            },
+        )
+        v2, _ = AtividadeVariacao.objects.get_or_create(
+            atividade=atividade_demo,
+            numero=2,
+            defaults={
+                "rotulo": "prova_v2",
+                "eh_geral": False,
+                "conteudo": "Versão com pistas visuais em etapas numeradas.",
+                "status": AtividadeVariacao.StatusChoices.APROVADA,
+                "aprovada_por": professor,
+            },
+        )
+        VariacaoAluno.objects.get_or_create(variacao=v1, aluno=alunos["Aluno Beta"])
+        VariacaoAluno.objects.get_or_create(variacao=v1, aluno=alunos["Aluno Gama"])
+        VariacaoAluno.objects.get_or_create(variacao=v2, aluno=alunos["Aluno Alfa"])
+
         # 2 relatórios prontos
         relatorios_criados = 0
         for nome_aluno, dados in RELATORIOS_DEMO.items():
             aluno = alunos[nome_aluno]
             if aluno.relatorios.exists():
                 continue
-            Relatorio.objects.create(aluno=aluno, dados=dados)
+            Relatorio.objects.create(
+                aluno=aluno,
+                atividade=atividade_demo if aluno.turma == turmas["Turma A"] else None,
+                dados=dados,
+            )
             relatorios_criados += 1
 
         self.stdout.write(

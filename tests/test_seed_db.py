@@ -80,7 +80,7 @@ def test_seed_db_popula_entidades_completas(executar_seed):
 
     assert Atividade.objects.count() == 16
     for ativ in Atividade.objects.all():
-        assert ativ.aluno is not None
+        assert ativ.turma is not None
         assert ativ.relatorios.exists()
 
     # Itens mockados

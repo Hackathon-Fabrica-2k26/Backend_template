@@ -1,13 +1,16 @@
 """Geração do relatório pedagógico com apoio de IA (LGPD: payload anonimizado)."""
 
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.alunos.models import Aluno
-from apps.pedagogico.models import Atividade, Relatorio
+from apps.pedagogico.models import Relatorio
 from apps.pedagogico.serializers import RelatorioSerializer
 from apps.pedagogico.services import (
+    DISCLAIMER,
     MODELO_PADRAO,
     LLMError,
     anonimizar,
@@ -31,6 +34,12 @@ class RelatorioGerarView(APIView):
     cidade nunca vão ao modelo); o aluno é tratado por codinome na resposta.
     """
 
+    serializer_class = RelatorioGerarSerializer
+
+    @extend_schema(
+        request=RelatorioGerarSerializer,
+        responses={201: OpenApiTypes.OBJECT},
+    )
     def post(self, request):
         entrada = RelatorioGerarSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
@@ -60,17 +69,11 @@ class RelatorioGerarView(APIView):
         except LLMError as erro:
             return Response({"erro": str(erro)}, status=status.HTTP_502_BAD_GATEWAY)
 
-        relatorio = Relatorio.objects.create(aluno=aluno, dados=resposta)
-        for item in resposta.get("atividades") or []:
-            titulo = str(item.get("titulo", "")).strip() if isinstance(item, dict) else ""
-            if not titulo:
-                continue
-            atividade, _ = Atividade.objects.get_or_create(
-                nome=titulo[:45],
-                tipo="Sugestão de IA",
-                aluno=aluno,
-            )
-            atividade.relatorios.add(relatorio)
+        relatorio = Relatorio.objects.create(
+            aluno=aluno,
+            dados=resposta,
+            disclaimer=DISCLAIMER,
+        )
 
         saida = RelatorioSerializer(relatorio)
         return Response(

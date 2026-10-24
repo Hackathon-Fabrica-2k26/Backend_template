@@ -1,5 +1,15 @@
 from .atividade import AtividadeViewSet
+from .perfil_apoio import PerfilApoioViewSet
 from .relatorio import RelatorioViewSet
 from .relatorio_gerar import RelatorioGerarView
+from .trabalho import TrabalhoViewSet
+from .variacao import AtividadeVariacaoViewSet
 
-__all__ = ["AtividadeViewSet", "RelatorioGerarView", "RelatorioViewSet"]
+__all__ = [
+    "AtividadeVariacaoViewSet",
+    "AtividadeViewSet",
+    "PerfilApoioViewSet",
+    "RelatorioGerarView",
+    "RelatorioViewSet",
+    "TrabalhoViewSet",
+]

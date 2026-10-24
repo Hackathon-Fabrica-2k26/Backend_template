@@ -1,6 +1,7 @@
 """Testes do endpoint POST /api/relatorios/gerar/ (view + LLM mockada)."""
 
-from apps.pedagogico.models import Atividade, Relatorio
+from apps.pedagogico.models import Relatorio
+from apps.pedagogico.services import DISCLAIMER
 
 from .factories import AlunoFactory, EscolaFactory, ResponsavelFactory, TurmaFactory
 
@@ -77,10 +78,7 @@ def test_gerar_relatorio_sucesso_salva_relatorio_e_atividade(auth_client, db, us
     relatorio = Relatorio.objects.get(pk=corpo["relatorio"]["id"])
     assert corpo["relatorio"]["aluno"] == aluno.pk
     assert corpo["relatorio"]["dados"]["radar"] == [70, 80]
-
-    atividade = Atividade.objects.get(aluno=aluno, nome="Jogo das sombras")
-    assert atividade.relatorios.get() == relatorio
-    assert relatorio.atividades.get() == atividade
+    assert relatorio.disclaimer == DISCLAIMER
 
     payload = corpo["payload_enviado"]
     assert "aluno" not in payload

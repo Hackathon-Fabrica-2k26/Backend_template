@@ -1,3 +1,5 @@
+from datetime import date
+
 from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 
@@ -12,12 +14,35 @@ class AlunoSerializer(serializers.ModelSerializer):
         required=True,
         allow_null=False,
     )
-    resumo = serializers.SerializerMethodField()
+    idade = serializers.SerializerMethodField(read_only=True)
+    resumo = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Aluno
-        fields = ["id", "nome", "turma", "meta_dados", "responsavel", "resumo"]
-        read_only_fields = ["id", "resumo"]
+        fields = [
+            "id",
+            "nome",
+            "matricula",
+            "nascimento",
+            "idade",
+            "ativo",
+            "turma",
+            "meta_dados",
+            "responsavel",
+            "resumo",
+        ]
+        read_only_fields = ["id", "idade", "resumo"]
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_idade(self, obj: Aluno) -> int | None:
+        if not obj.nascimento:
+            return None
+        hoje = date.today()
+        return (
+            hoje.year
+            - obj.nascimento.year
+            - ((hoje.month, hoje.day) < (obj.nascimento.month, obj.nascimento.day))
+        )
 
     @extend_schema_field(
         inline_serializer(
@@ -34,9 +59,13 @@ class AlunoSerializer(serializers.ModelSerializer):
         if total_relatorios is None:
             total_relatorios = obj.relatorios.filter(deleted__isnull=True).count()
 
+        total_trabalhos = getattr(obj, "total_trabalhos", None)
+        if total_trabalhos is None:
+            total_trabalhos = obj.trabalhos.filter(deleted__isnull=True).count()
+
         return {
             "relatorios": total_relatorios,
-            "trabalhos": 0,
+            "trabalhos": total_trabalhos,
             "observacoes_pendentes": 0,
         }
 
