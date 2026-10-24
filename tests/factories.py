@@ -1,4 +1,5 @@
 # pyright: reportIncompatibleVariableOverride=false
+import os
 from typing import cast
 
 import factory
@@ -9,7 +10,7 @@ from apps.escolas.models import Config, Escola, Turma
 from apps.items.models import Item
 from apps.pedagogico.models import Atividade, Relatorio
 
-SENHA = "Senha-forte-123"
+SENHA = os.getenv("SEED_DEMO_PASSWORD") or "Senha-forte-123"
 
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
