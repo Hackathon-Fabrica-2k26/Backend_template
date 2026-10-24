@@ -31,7 +31,7 @@ class RelatorioViewSet(viewsets.ModelViewSet):
     """Relatórios restritos aos alunos das turmas do professor (LGPD)."""
 
     serializer_class = RelatorioSerializer
-    filterset_fields = ["aluno", "tipo"]
+    filterset_fields = ["aluno", "atividade", "tipo"]
     ordering_fields = ["created_at"]
 
     @action(

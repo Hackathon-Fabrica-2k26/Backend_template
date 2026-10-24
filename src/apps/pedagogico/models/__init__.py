@@ -1,6 +1,15 @@
 from .atividade import Atividade
-from .envio_trabalhos import EnvioTrabalhos
+from .perfil_apoio import PerfilApoio
 from .relatorio import Relatorio
-from .trabalho import Trabalho
+from .trabalho import EnvioTrabalhos, Trabalho
+from .variacao import AtividadeVariacao, VariacaoAluno
 
-__all__ = ["Atividade", "EnvioTrabalhos", "Relatorio", "Trabalho"]
+__all__ = [
+    "Atividade",
+    "AtividadeVariacao",
+    "EnvioTrabalhos",
+    "PerfilApoio",
+    "Relatorio",
+    "Trabalho",
+    "VariacaoAluno",
+]

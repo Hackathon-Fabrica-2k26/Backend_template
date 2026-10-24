@@ -8,7 +8,15 @@ from django.contrib.auth import get_user_model
 from apps.alunos.models import Aluno, MetaDados, Responsavel
 from apps.escolas.models import Config, Escola, Turma
 from apps.items.models import Item
-from apps.pedagogico.models import Atividade, EnvioTrabalhos, Relatorio, Trabalho
+from apps.pedagogico.models import (
+    Atividade,
+    AtividadeVariacao,
+    EnvioTrabalhos,
+    PerfilApoio,
+    Relatorio,
+    Trabalho,
+    VariacaoAluno,
+)
 
 SENHA = os.getenv("SEED_DEMO_PASSWORD") or "Senha-forte-123"
 
@@ -98,31 +106,48 @@ class AlunoFactory(factory.django.DjangoModelFactory):
     turma = factory.declarations.SubFactory(TurmaFactory)
 
 
-class RelatorioFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = Relatorio
-
-    aluno = factory.declarations.SubFactory(AlunoFactory)
-    dados = factory.declarations.LazyFunction(dict)
-
-
 class AtividadeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Atividade
-        skip_postgeneration_save = True
 
-    nome = factory.declarations.Sequence(lambda n: f"Atividade {n}")
-    tipo = factory.declarations.Sequence(lambda n: f"Tipo {n}")
+    turma = factory.declarations.SubFactory(TurmaFactory)
+    criada_por = factory.declarations.SubFactory(UserFactory)
+    titulo = factory.declarations.Sequence(lambda n: f"Atividade {n}")
+    origem = Atividade.OrigemChoices.TEXTO
+    texto_original = factory.declarations.Sequence(lambda n: f"Texto original {n}")
+    objetivo = factory.declarations.Sequence(lambda n: f"Objetivo {n}")
+    status = Atividade.StatusChoices.RASCUNHO
+
+
+class AtividadeVariacaoFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AtividadeVariacao
+
+    atividade = factory.declarations.SubFactory(AtividadeFactory)
+    numero = factory.declarations.Sequence(lambda n: n + 1)
+    rotulo = factory.declarations.Sequence(lambda n: f"prova_v{n + 1}")
+    eh_geral = False
+    conteudo = factory.declarations.Sequence(lambda n: f"Conteúdo da variação {n + 1}")
+    status = AtividadeVariacao.StatusChoices.RASCUNHO
+
+
+class VariacaoAlunoFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = VariacaoAluno
+
+    variacao = factory.declarations.SubFactory(AtividadeVariacaoFactory)
     aluno = factory.declarations.SubFactory(AlunoFactory)
 
-    @factory.declarations.PostGeneration
-    def relatorios(self, create, extracted, **kwargs):
-        if not create:
-            return
-        if extracted:
-            atividade = cast(Atividade, self)
-            for relatorio in extracted:
-                atividade.relatorios.add(relatorio)
+
+class PerfilApoioFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PerfilApoio
+
+    aluno = factory.declarations.SubFactory(AlunoFactory)
+    necessidades = factory.declarations.LazyFunction(lambda: ["Apoio visual"])
+    estrategias = factory.declarations.LazyFunction(lambda: ["Enunciados curtos"])
+    observacoes = ""
+    ativo = True
 
 
 class EnvioTrabalhosFactory(factory.django.DjangoModelFactory):
@@ -132,7 +157,6 @@ class EnvioTrabalhosFactory(factory.django.DjangoModelFactory):
     atividade = factory.declarations.SubFactory(AtividadeFactory)
     enviado_por = factory.declarations.SubFactory(UserFactory)
     total_arquivos = 1
-    status = EnvioTrabalhos.StatusChoices.PROCESSANDO
 
 
 class TrabalhoFactory(factory.django.DjangoModelFactory):
@@ -141,9 +165,20 @@ class TrabalhoFactory(factory.django.DjangoModelFactory):
 
     envio = factory.declarations.SubFactory(EnvioTrabalhosFactory)
     atividade = factory.declarations.LazyAttribute(lambda o: o.envio.atividade)
+    aluno = None
+    variacao = None
+    nome_lido = "Aluno Teste"
+    confianca_nome = 0.85
+    identificacao = Trabalho.IdentificacaoChoices.PENDENTE
+    descricao_ia = "Descrição gerada pela IA"
+    dados_analise = factory.declarations.LazyFunction(dict)
+    status = Trabalho.StatusChoices.ANALISADO
+
+
+class RelatorioFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Relatorio
+
     aluno = factory.declarations.SubFactory(AlunoFactory)
-    nome_lido = factory.declarations.Sequence(lambda n: f"Aluno Lído {n}")
-    confianca = 1.0
-    identificacao = Trabalho.IdentificacaoChoices.CONFIRMADA
-    descricao_ia = "Descrição da atividade pela IA"
-    analise_pedagogica = factory.declarations.LazyFunction(dict)
+    atividade = None
+    dados = factory.declarations.LazyFunction(dict)

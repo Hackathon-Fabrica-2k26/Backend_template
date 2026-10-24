@@ -8,7 +8,7 @@ from PIL import Image
 from rest_framework import status
 
 from apps.pedagogico.models import EnvioTrabalhos, Relatorio, Trabalho
-from apps.pedagogico.services import LLMError
+from apps.pedagogico.services import DISCLAIMER, LLMError
 from tests.factories import AlunoFactory, AtividadeFactory, TurmaFactory, UserFactory
 
 
@@ -42,7 +42,7 @@ def cenario(db):
     turma = TurmaFactory(professores=[professor])
     aluno1 = AlunoFactory(nome="Lucas Gabriel Silva", turma=turma)
     aluno2 = AlunoFactory(nome="Mariana Costa", turma=turma)
-    atividade = AtividadeFactory(aluno=aluno1, nome="Desenho Livre")
+    atividade = AtividadeFactory(turma=turma, criada_por=professor, titulo="Desenho Livre")
     return {
         "professor": professor,
         "turma": turma,
@@ -137,13 +137,16 @@ def test_envio_trabalhos_multiplos_formatos_e_casamento_exato(cenario, auth_clie
     for t in dados["trabalhos"]:
         assert t["identificacao"] == "confirmada"
         assert t["aluno"] == cenario["aluno1"].id
-        assert t["confianca"] == 1.0
+        assert t["confianca_nome"] == 1.0
+        assert t["status"] == "analisado"
 
     # Verifica se os Relatórios foram criados e vinculados à atividade
     relatorios = Relatorio.objects.filter(aluno=cenario["aluno1"], tipo="atividade")
     assert relatorios.count() == 4
     for r in relatorios:
-        assert cenario["atividade"] in r.atividades.all()
+        assert r.atividade == cenario["atividade"]
+        assert r.disclaimer == DISCLAIMER
+        assert r.dados["atividade_titulo"] == "Desenho Livre"
 
 
 @pytest.mark.django_db
@@ -185,38 +188,36 @@ def test_patch_trabalho_confirmacao_manual_gera_relatorio(cenario, auth_client):
         atividade=cenario["atividade"],
         enviado_por=cenario["professor"],
         total_arquivos=1,
-        status=EnvioTrabalhos.StatusChoices.REVISAO_PENDENTE,
     )
     trabalho = Trabalho.objects.create(
         envio=envio,
         atividade=cenario["atividade"],
         aluno=None,
         nome_lido="Mariana",
-        confianca=0.6,
+        confianca_nome=0.6,
         identificacao=Trabalho.IdentificacaoChoices.PENDENTE,
         descricao_ia="Colagem de gravuras",
-        analise_pedagogica={"pontos_fortes": ["Organização"]},
+        dados_analise={"pontos_fortes": ["Organização"]},
+        status=Trabalho.StatusChoices.ANALISADO,
     )
 
     url = f"/api/trabalhos/{trabalho.id}/"
     resp = auth_client.patch(
         url,
-        {"aluno": cenario["aluno2"].id, "identificacao": "manual"},
+        {"aluno": cenario["aluno2"].id, "identificacao": "confirmada"},
         format="json",
     )
     assert resp.status_code == status.HTTP_200_OK
-    assert resp.data["identificacao"] == "manual"
+    assert resp.data["identificacao"] == "confirmada"
     assert resp.data["aluno"] == cenario["aluno2"].id
-    assert resp.data["confianca"] == 1.0
+    assert resp.data["confianca_nome"] == 1.0
+    assert resp.data["confirmado_por"] == cenario["professor"].id
 
     # Verifica se o relatório foi gerado para Mariana
     relatorio = Relatorio.objects.get(aluno=cenario["aluno2"], tipo="atividade")
     assert relatorio.dados["descricao"] == "Colagem de gravuras"
-    assert cenario["atividade"] in relatorio.atividades.all()
-
-    # Envio deve ter sido atualizado para concluído
-    envio.refresh_from_db()
-    assert envio.status == EnvioTrabalhos.StatusChoices.CONCLUIDO
+    assert relatorio.atividade == cenario["atividade"]
+    assert relatorio.disclaimer == DISCLAIMER
 
 
 @pytest.mark.django_db
@@ -238,7 +239,7 @@ def test_patch_trabalho_aluno_de_outra_turma_retorna_400(cenario, auth_client):
     url = f"/api/trabalhos/{trabalho.id}/"
     resp = auth_client.patch(
         url,
-        {"aluno": aluno_outra_turma.id, "identificacao": "manual"},
+        {"aluno": aluno_outra_turma.id, "identificacao": "confirmada"},
         format="json",
     )
     assert resp.status_code == status.HTTP_400_BAD_REQUEST

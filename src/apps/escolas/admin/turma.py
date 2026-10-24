@@ -23,7 +23,7 @@ class ExcluidosFilter(admin.SimpleListFilter):
 
 @admin.register(Turma)
 class TurmaAdmin(SafeDeleteAdmin, SimpleHistoryAdmin, ModelAdmin):  # pyright: ignore[reportIncompatibleMethodOverride]
-    list_display = ("nome", "escola", "created_at", "deleted")
-    list_filter = ("escola", ExcluidosFilter)
+    list_display = ("nome", "ano_letivo", "escola", "created_at", "deleted")
+    list_filter = ("escola", "ano_letivo", ExcluidosFilter)
     search_fields = ("nome",)
     filter_horizontal = ("professores",)

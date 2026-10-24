@@ -25,6 +25,6 @@ class ExcluidosFilter(admin.SimpleListFilter):
 
 @admin.register(Relatorio)
 class RelatorioAdmin(SafeDeleteAdmin, SimpleHistoryAdmin, ModelAdmin):  # pyright: ignore[reportIncompatibleMethodOverride]
-    list_display = ("id", "aluno", "created_at", "deleted")
-    list_filter = (ExcluidosFilter,)
+    list_display = ("id", "aluno", "atividade", "tipo", "created_at", "deleted")
+    list_filter = ("tipo", ExcluidosFilter)
     search_fields = ("id",)

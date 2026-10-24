@@ -9,6 +9,18 @@ class Aluno(BaseModel):
     """
 
     nome = models.CharField("nome", max_length=45)
+    matricula = models.CharField(
+        "matrícula",
+        max_length=50,
+        blank=True,
+        default="",
+    )
+    nascimento = models.DateField(
+        "data de nascimento",
+        null=True,
+        blank=True,
+    )
+    ativo = models.BooleanField("ativo", default=True)
 
     meta_dados = models.OneToOneField(
         "MetaDados",

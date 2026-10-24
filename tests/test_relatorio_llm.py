@@ -96,21 +96,27 @@ def test_llm_devolvendo_lista_vira_erro(monkeypatch):
 
 
 def test_chaves_sensiveis_sem_diferenciar_maiusculas():
-    """Variações de maiúsculas nas chaves ("Nome", "CPF", "Cidade") são removidas."""
+    """Variações de maiúsculas nas chaves ("Nome", "CPF", "Cidade", "Matrícula") são removidas."""
     dados = {
         "Nome": "João",
         "CPF": "123.456.789-09",
         "Cidade": "Campinas",
         "Data de Nascimento": "10/03/2017",
-        "titulo": "atividade de frações",
+        "nascimento": "2017-03-10",
+        "Matrícula": "MAT2026001",
+        "matricula": "MAT2026001",
+        "titulo": "atividade de frações em 2017-03-10",
     }
     payload = anonimizar(dados)
     texto = json.dumps(payload).lower()
     assert "nome" not in payload
     assert "cpf" not in payload
     assert "cidade" not in payload
+    assert "matricula" not in texto
+    assert "mat2026001" not in texto
+    assert "2017-03-10" not in texto
     assert "data de nascimento" not in texto
-    assert payload == {"titulo": "atividade de frações"}
+    assert payload == {"titulo": "atividade de frações em"}
 
 
 def test_primeiro_nome_isolado_tambem_vira_codinome():

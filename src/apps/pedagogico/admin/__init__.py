@@ -1,6 +1,19 @@
-from .atividade import AtividadeAdmin
-from .envio_trabalhos import EnvioTrabalhosAdmin
+from .atividade import (
+    AtividadeAdmin,
+    AtividadeVariacaoAdmin,
+    EnvioTrabalhosAdmin,
+    PerfilApoioAdmin,
+    TrabalhoAdmin,
+    VariacaoAlunoAdmin,
+)
 from .relatorio import RelatorioAdmin
-from .trabalho import TrabalhoAdmin
 
-__all__ = ["AtividadeAdmin", "EnvioTrabalhosAdmin", "RelatorioAdmin", "TrabalhoAdmin"]
+__all__ = [
+    "AtividadeAdmin",
+    "AtividadeVariacaoAdmin",
+    "EnvioTrabalhosAdmin",
+    "PerfilApoioAdmin",
+    "RelatorioAdmin",
+    "TrabalhoAdmin",
+    "VariacaoAlunoAdmin",
+]

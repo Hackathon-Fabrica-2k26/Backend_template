@@ -7,9 +7,9 @@ from apps.escolas.serializers import TurmaSerializer
 
 class TurmaViewSet(viewsets.ModelViewSet):
     serializer_class = TurmaSerializer
-    filterset_fields = ["escola"]
+    filterset_fields = ["escola", "ano_letivo"]
     search_fields = ["nome"]
-    ordering_fields = ["nome", "created_at"]
+    ordering_fields = ["nome", "ano_letivo", "created_at"]
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
@@ -19,7 +19,7 @@ class TurmaViewSet(viewsets.ModelViewSet):
             .annotate(
                 total_estudantes=Count(
                     "alunos",
-                    filter=Q(alunos__deleted__isnull=True),
+                    filter=Q(alunos__deleted__isnull=True, alunos__ativo=True),
                     distinct=True,
                 )
             )

@@ -5,9 +5,7 @@ from apps.pedagogico.models import Trabalho
 
 
 class TrabalhoSerializer(serializers.ModelSerializer):
-    """Representação de um trabalho avaliado."""
-
-    aluno_nome = serializers.SerializerMethodField()
+    aluno_nome = serializers.CharField(source="aluno.nome", read_only=True, default=None)
 
     class Meta:
         model = Trabalho
@@ -17,11 +15,14 @@ class TrabalhoSerializer(serializers.ModelSerializer):
             "atividade",
             "aluno",
             "aluno_nome",
+            "variacao",
             "nome_lido",
-            "confianca",
+            "confianca_nome",
             "identificacao",
+            "confirmado_por",
             "descricao_ia",
-            "analise_pedagogica",
+            "dados_analise",
+            "status",
             "created_at",
             "updated_at",
         ]
@@ -31,26 +32,39 @@ class TrabalhoSerializer(serializers.ModelSerializer):
             "atividade",
             "aluno_nome",
             "nome_lido",
-            "confianca",
+            "confianca_nome",
+            "confirmado_por",
             "descricao_ia",
-            "analise_pedagogica",
+            "dados_analise",
+            "status",
             "created_at",
             "updated_at",
         ]
 
-    def get_aluno_nome(self, obj) -> str | None:
-        return obj.aluno.nome if obj.aluno else None
 
-
-class TrabalhoPatchSerializer(serializers.Serializer):
-    """Confirmação ou atribuição manual do trabalho ao aluno pela professora."""
-
+class TrabalhoConfirmacaoSerializer(serializers.Serializer):
     aluno = serializers.PrimaryKeyRelatedField(
-        queryset=Aluno.objects.filter(deleted__isnull=True),
-        required=False,
-        allow_null=True,
+        queryset=Aluno.objects.all(),
+        required=True,
+        help_text="ID do aluno confirmado para este trabalho.",
     )
     identificacao = serializers.ChoiceField(
-        choices=Trabalho.IdentificacaoChoices.choices,
+        choices=[
+            (
+                Trabalho.IdentificacaoChoices.CONFIRMADA,
+                Trabalho.IdentificacaoChoices.CONFIRMADA.label,
+            ),
+        ],
         default=Trabalho.IdentificacaoChoices.CONFIRMADA,
+        required=False,
     )
+
+    def validate_aluno(self, aluno: Aluno) -> Aluno:
+        trabalho: Trabalho | None = self.context.get("trabalho")
+        if trabalho is not None:
+            turma_atividade = trabalho.atividade.turma
+            if turma_atividade and aluno.turma_id != turma_atividade.pk:
+                raise serializers.ValidationError(
+                    "O aluno informado não pertence à turma desta atividade."
+                )
+        return aluno

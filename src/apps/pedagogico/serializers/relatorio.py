@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 
 from apps.pedagogico.services import DISCLAIMER
@@ -14,6 +13,7 @@ class RelatorioSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "aluno",
+            "atividade",
             "tipo",
             "dados",
             "disclaimer",
@@ -27,8 +27,8 @@ class RelatorioSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_disclaimer(self, obj):
-        return DISCLAIMER
+    def get_disclaimer(self, obj: Relatorio) -> str:
+        return obj.disclaimer or DISCLAIMER
 
     def validate_aluno(self, aluno):
         """O aluno precisa pertencer a uma das turmas do professor logado."""
@@ -49,3 +49,17 @@ class RelatorioSerializer(serializers.ModelSerializer):
                 )
 
         return aluno
+
+    def validate_atividade(self, atividade):
+        if atividade is None:
+            return None
+        request = self.context.get("request")
+        if (
+            getattr(request, "user", None) is not None
+            and request.user.is_authenticated
+        ):
+            if not atividade.turma.professores.filter(pk=request.user.pk).exists():
+                raise serializers.ValidationError(
+                    "Você só pode vincular relatórios a atividades das suas turmas."
+                )
+        return atividade

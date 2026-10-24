@@ -1,80 +1,128 @@
-from django.db.models import Q, QuerySet
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
-from rest_framework import status, viewsets
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
+from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.pedagogico.models import Atividade
 from apps.pedagogico.serializers import (
     AtividadeSerializer,
     EnvioTrabalhosSerializer,
-    TrabalhoUploadSerializer,
+    EnvioTrabalhosUploadSerializer,
 )
-from apps.pedagogico.services import (
-    LLMError,
-    processar_envio_trabalhos,
-    professor_tem_acesso,
-)
+from apps.pedagogico.services import LLMError, processar_envio_trabalhos
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="Listar atividades",
+        description="Retorna as atividades das turmas do professor autenticado.",
+        parameters=[
+            OpenApiParameter(
+                name="turma",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                description="Filtra atividades pelo ID da turma.",
+            ),
+            OpenApiParameter(
+                name="search",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Busca textual por título ou objetivo da atividade.",
+            ),
+            OpenApiParameter(
+                name="ordering",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Ordena por `titulo`, `-titulo`, `created_at` ou `-created_at`.",
+            ),
+        ],
+    ),
+    create=extend_schema(summary="Criar atividade"),
+    retrieve=extend_schema(summary="Detalhar atividade"),
+    update=extend_schema(summary="Atualizar atividade"),
+    partial_update=extend_schema(summary="Atualizar atividade parcialmente"),
+    destroy=extend_schema(summary="Remover atividade"),
+)
 class AtividadeViewSet(viewsets.ModelViewSet):
-    """Atividades restritas aos alunos das turmas do professor (LGPD)."""
-
     serializer_class = AtividadeSerializer
-    filterset_fields = ["aluno"]
-    search_fields = ["nome"]
-    ordering_fields = ["nome", "created_at"]
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["titulo", "objetivo"]
+    ordering_fields = ["titulo", "created_at"]
+    ordering = ["-created_at"]
 
-    def get_queryset(self) -> QuerySet[Atividade]:  # type: ignore
+    def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Atividade.objects.none()
+        qs = (
+            Atividade.objects.filter(turma__professores=self.request.user)
+            .select_related("turma", "criada_por")
+            .distinct()
+        )
+        turma_id = self.request.query_params.get("turma")
+        if turma_id and turma_id.isdigit():
+            qs = qs.filter(turma_id=int(turma_id))
+        return qs
 
-        user = self.request.user
-        if user.is_staff or user.is_superuser:
-            return Atividade.objects.all()
-
-        filtro = Q(aluno__turma__professores=user)
-        if any(f.name == "turma" for f in Atividade._meta.fields):
-            filtro |= Q(turma__professores=user)
-
-        return Atividade.objects.filter(filtro).distinct()
+    def perform_create(self, serializer):
+        serializer.save(criada_por=self.request.user)
 
     @extend_schema(
-        request=TrabalhoUploadSerializer,
+        summary="Enviar trabalhos de alunos por foto/arquivo",
+        description=(
+            "Recebe múltiplos arquivos (PDF, PNG, JPG, WEBP ou DOCX até 20 MB cada), "
+            "analisa em memória via Gemini (extraindo nome, descrição e análise pedagógica), "
+            "casa automaticamente com os alunos da turma, gera relatórios do tipo 'atividade' "
+            "para os trabalhos confirmados e descarta os arquivos originais imediatamente (LGPD)."
+        ),
+        request=EnvioTrabalhosUploadSerializer,
         responses={
             201: EnvioTrabalhosSerializer,
-            400: OpenApiTypes.OBJECT,
-            404: OpenApiTypes.OBJECT,
-            502: OpenApiTypes.OBJECT,
+            400: OpenApiResponse(
+                description="Arquivos inválidos ou formato/tamanho não suportado."
+            ),
+            404: OpenApiResponse(description="Atividade não encontrada."),
+            502: OpenApiResponse(description="Falha ao comunicar com o provedor de IA."),
         },
     )
     @action(
         detail=True,
         methods=["post"],
-        parser_classes=[MultiPartParser, FormParser],
         url_path="trabalhos",
+        parser_classes=[MultiPartParser, FormParser],
     )
-    def trabalhos(self, request, pk=None):
-        """Recebe arquivos de trabalhos da atividade, analisa via Gemini e grava relatórios."""
+    def trabalhos(self, request: Request, pk=None) -> Response:
         atividade = self.get_object()
-        if not professor_tem_acesso(request.user, atividade):
-            return Response(status=status.HTTP_404_NOT_FOUND)
-
         arquivos = request.FILES.getlist("arquivos")
-        if not arquivos and "arquivo" in request.FILES:
-            arquivos = [request.FILES["arquivo"]]
         if not arquivos:
             return Response(
-                {"arquivos": ["Envie pelo menos um arquivo de trabalho."]},
+                {"arquivos": ["Envie ao menos um arquivo no campo 'arquivos'."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
-            envio = processar_envio_trabalhos(atividade, request.user, arquivos)
-        except LLMError as erro:
-            return Response({"erro": str(erro)}, status=status.HTTP_502_BAD_GATEWAY)
+            envio = processar_envio_trabalhos(
+                atividade=atividade,
+                arquivos=arquivos,
+                usuario=request.user,
+            )
+        except ValueError as exc:
+            return Response(
+                {"arquivos": [str(exc)]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except LLMError as exc:
+            return Response(
+                {"erro": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
-        saida = EnvioTrabalhosSerializer(envio)
-        return Response(saida.data, status=status.HTTP_201_CREATED)
+        serializer = EnvioTrabalhosSerializer(envio)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
