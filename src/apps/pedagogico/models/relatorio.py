@@ -4,12 +4,22 @@ from core.models import BaseModel
 
 
 class Relatorio(BaseModel):
+    TIPOS_RELATORIO = [
+    ("atividade", "Atividade"),
+    ("geral", "Geral"),
+    ("periodo", "Período"),
+    ]
     dados = models.JSONField("dados", default=dict)
     aluno = models.ForeignKey(
         "alunos.Aluno",
         on_delete=models.CASCADE,
         related_name="relatorios",
         verbose_name="aluno",
+    )
+    tipo = models.CharField(
+        max_length=10,
+        choices=TIPOS_RELATORIO,
+        default="geral",
     )
 
     class Meta(BaseModel.Meta):
