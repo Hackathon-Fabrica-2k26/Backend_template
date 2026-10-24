@@ -11,10 +11,11 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def admin_client(client):
     admin = get_user_model().objects.create_superuser(
-        matricula="ROOT0001",
+        username="root",
+        name="Root",
         email="root@example.com",
         password="Senha-forte-123",
-        username="Root",
+        matricula="ROOT0001",
     )
     client.force_login(admin)
     return client
