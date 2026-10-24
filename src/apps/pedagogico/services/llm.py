@@ -10,6 +10,9 @@ view traduz em um 502 com mensagem amigável.
 
 import json
 import re
+from pathlib import Path
+
+from .anonimizar import anonimizar
 
 DISCLAIMER = (
     "Este relatório tem finalidade estritamente pedagógica, foi gerado com "
@@ -55,6 +58,15 @@ FORMATO_RESPOSTA = (
     "quando um campo não se aplicar."
 )
 
+FORMATO_SUGESTAO_ATIVIDADE = (
+    "Com base no texto pedagógico abaixo, sugira um título curto e uma "
+    "descrição/objetivo pedagógico curto em português do Brasil, sem incluir "
+    "dados pessoais.\n"
+    "Responda APENAS com um JSON válido, sem nenhum texto antes ou depois, "
+    "no formato:\n"
+    '{\n  "titulo": "...",\n  "descricao": "..."\n}'
+)
+
 MAX_RESPOSTA_TOKENS = 8192
 
 
@@ -90,6 +102,51 @@ def gerar_relatorio(payload: dict, api_key: str, modelo: str = MODELO_PADRAO) ->
         raise LLMError()
     dados["disclaimer"] = DISCLAIMER
     return dados
+
+
+def sugerir_atividade(
+    texto_original: str,
+    api_key: str = "",
+    nome_arquivo: str = "",
+    modelo: str = MODELO_PADRAO,
+) -> dict[str, str]:
+    """Sugere título e descrição curtos em pt-BR via IA a partir do texto extraído.
+
+    Se a IA falhar ou não houver api_key configurada, aplica fallback:
+    - titulo: nome do arquivo sem extensão (ou 'Atividade')
+    - descricao: primeiros 300 caracteres do texto original
+    """
+    titulo_fallback = (Path(nome_arquivo).stem.strip() if nome_arquivo else "") or "Atividade"
+    titulo_fallback = titulo_fallback[:255]
+    descricao_fallback = texto_original.strip()[:300]
+
+    if not api_key:
+        return {
+            "titulo": titulo_fallback,
+            "descricao": descricao_fallback,
+        }
+
+    texto_limpo = str(anonimizar({"texto": texto_original}).get("texto", "")).strip()
+    conteudo = FORMATO_SUGESTAO_ATIVIDADE + "\n\n" + (texto_limpo or descricao_fallback)
+
+    try:
+        resposta = _pedir_ao_gemini(conteudo, api_key, modelo)
+        dados = _extrair_json(resposta)
+        if not isinstance(dados, dict):
+            raise LLMError()
+        titulo = str(dados.get("titulo") or "").strip()[:255]
+        descricao = str(dados.get("descricao") or "").strip()
+        if not titulo or not descricao:
+            raise LLMError()
+        return {
+            "titulo": titulo,
+            "descricao": descricao,
+        }
+    except Exception:
+        return {
+            "titulo": titulo_fallback,
+            "descricao": descricao_fallback,
+        }
 
 
 def _pedir_ao_gemini(conteudo: str, api_key: str, modelo: str) -> str:

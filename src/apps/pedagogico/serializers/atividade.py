@@ -4,6 +4,12 @@ from ..models import Atividade
 
 
 class AtividadeSerializer(serializers.ModelSerializer):
+    descricao = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+    )
+
     class Meta:
         model = Atividade
         fields = [
@@ -14,6 +20,7 @@ class AtividadeSerializer(serializers.ModelSerializer):
             "origem",
             "texto_original",
             "objetivo",
+            "descricao",
             "status",
             "created_at",
             "updated_at",
@@ -29,3 +36,9 @@ class AtividadeSerializer(serializers.ModelSerializer):
                     "Você só pode vincular atividades às suas turmas."
                 )
         return turma
+
+    def validate(self, attrs):
+        descricao = attrs.pop("descricao", None)
+        if descricao is not None and not attrs.get("objetivo"):
+            attrs["objetivo"] = descricao
+        return attrs

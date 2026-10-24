@@ -24,6 +24,7 @@ def api_root(request, format=None):
             "responsaveis": reverse("responsavel-list", request=request, format=format),
             "meta-dados": reverse("meta-dados-list", request=request, format=format),
             "atividades": reverse("atividade-list", request=request, format=format),
+            "atividades-extrair": reverse("atividade-extrair", request=request, format=format),
             "variacoes": reverse("variacao-list", request=request, format=format),
             "perfis-apoio": reverse("perfil-apoio-list", request=request, format=format),
             "trabalhos": reverse("trabalho-list", request=request, format=format),
