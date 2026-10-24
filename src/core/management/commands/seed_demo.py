@@ -28,7 +28,7 @@ from apps.pedagogico.models import (
 
 SENHA_PROFESSOR_PADRAO = "demo-senha-123"
 API_KEY_PADRAO = "demo-api-key-troque-no-admin"
-EMAIL_PROFESSOR = "professor@demo.com"
+EMAIL_PROFESSOR = os.getenv("SEED_PROFESSOR_EMAIL", "professor@demo.com")
 NOME_ESCOLA = "Escola Marsupi Demo"
 
 # Relatorio.dados segue o contrato da seção 6 de docs/contexto_projeto_ia.md.
