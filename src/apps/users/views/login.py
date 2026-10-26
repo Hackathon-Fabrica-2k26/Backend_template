@@ -4,6 +4,7 @@ from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from ..services.otp import create_otp
 from ..services.otp_email import enviar_email_otp
@@ -30,11 +31,19 @@ class LoginView(APIView):
             200: inline_serializer(
                 name="LoginOTPResponse",
                 fields={
-                    "otp_token": serializers.CharField(),
-                    "email": serializers.EmailField(),
+                    "otp_required": serializers.BooleanField(),
+                    "otp_token": serializers.CharField(required=False),
+                    "email": serializers.EmailField(required=False),
+                    "refresh": serializers.CharField(required=False),
+                    "access": serializers.CharField(required=False),
                 },
             )
         },
+        description=(
+            "Sem verificação em duas etapas (`otp_ativo` falso, o padrão) devolve "
+            "`refresh`/`access`. Com ela ligada, envia o código por e-mail e devolve "
+            "`otp_token` para `/api/auth/otp/verify/`."
+        ),
     )
     def post(self, request):
         matricula = request.data.get("matricula")
@@ -58,12 +67,25 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
+        # Sem verificação em duas etapas (padrão): entra direto com os tokens.
+        if not user.otp_ativo:
+            refresh = RefreshToken.for_user(user)
+            return Response(
+                {
+                    "otp_required": False,
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                },
+                status=status.HTTP_200_OK,
+            )
+
         otp_token, code = create_otp(user.pk)
 
         enviar_email_otp(user, code)
 
         return Response(
             {
+                "otp_required": True,
                 "otp_token": otp_token,
                 "email": mask_email(user.email),
             },
