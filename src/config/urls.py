@@ -58,6 +58,7 @@ def api_root(request, format=None):
             "trabalhos": reverse("trabalho-list", request=request, format=format),
             "relatorios": reverse("relatorio-list", request=request, format=format),
             "relatorios-gerar": reverse("relatorio-gerar", request=request, format=format),
+            "habilidades": reverse("habilidades", request=request, format=format),
             "me": reverse("me", request=request, format=format),
             "login": reverse("login", request=request, format=format),
             "otp-verify": reverse("otp-verify", request=request, format=format),
