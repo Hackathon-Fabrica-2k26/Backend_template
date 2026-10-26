@@ -3,6 +3,7 @@ from rest_framework import serializers
 from apps.alunos.models import Aluno
 
 from ..models import AtividadeVariacao, VariacaoAluno
+from ..services.habilidades import NOMES_HABILIDADES
 
 
 class MapaVariacaoAlunoSerializer(serializers.Serializer):
@@ -16,6 +17,8 @@ class MapaVariacaoItemSerializer(serializers.Serializer):
     rotulo = serializers.CharField()
     eh_geral = serializers.BooleanField()
     status = serializers.CharField()
+    habilidade = serializers.CharField()
+    habilidade_nome = serializers.CharField()
     alunos = MapaVariacaoAlunoSerializer(many=True)
 
 
@@ -25,6 +28,7 @@ class AtividadeVariacaoSerializer(serializers.ModelSerializer):
         many=True,
         required=False,
     )
+    habilidade_nome = serializers.SerializerMethodField()
 
     class Meta:
         model = AtividadeVariacao
@@ -38,6 +42,8 @@ class AtividadeVariacaoSerializer(serializers.ModelSerializer):
             "status",
             "editada_manual",
             "adaptacoes_feitas",
+            "habilidade",
+            "habilidade_nome",
             "aprovada_por",
             "aprovada_em",
             "alunos",
@@ -46,11 +52,15 @@ class AtividadeVariacaoSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "habilidade",
             "aprovada_por",
             "aprovada_em",
             "created_at",
             "updated_at",
         ]
+
+    def get_habilidade_nome(self, obj) -> str:
+        return NOMES_HABILIDADES.get(obj.habilidade, "")
 
     def validate_atividade(self, atividade):
         request = self.context.get("request")

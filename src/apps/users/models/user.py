@@ -23,6 +23,9 @@ class User(AbstractUser):
     )
 
     matricula = models.CharField(max_length=100, unique=True)
+    # Verificação em duas etapas (código por e-mail): desligada por padrão, a professora
+    # liga no perfil.
+    otp_ativo = models.BooleanField("verificação em duas etapas", default=False)
 
     USERNAME_FIELD = "matricula"
     REQUIRED_FIELDS = ["email", "name"]

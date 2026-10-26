@@ -1,8 +1,9 @@
-"""Serviço de agrupamento de perfis de apoio e geração de variações de atividade com IA.
+"""Serviço de agrupamento de alunos e geração de variações de atividade com IA.
 
 LGPD / Diretrizes Pedagógicas:
-- Agrupa os PerfilApoio ativos dos alunos da turma por necessidades pedagógicas
-  semelhantes (no máximo 4 grupos adaptados + 1 versão geral 'prova_v1').
+- Agrupa os alunos pela habilidade a reforçar observada nos trabalhos (lista fixa do
+  1º ano, mínimo de 2 trabalhos) e, como camada de formato, pelas necessidades do
+  PerfilApoio/MetaDados (no máximo 4 grupos adaptados + 1 versão geral 'prova_v1').
 - O payload enviado à LLM é anonimizado (sem nome de aluno, sem responsável,
   sem CPF, sem datas) e limpo de qualquer menção a CID ou diagnóstico clínico.
 - Os rótulos gerados são exclusivamente neutros ('prova_v1', 'prova_v2', ...),
@@ -18,17 +19,29 @@ from safedelete.models import HARD_DELETE
 
 from apps.alunos.models import Aluno
 from apps.alunos.services import alunos_com_consentimento
-from apps.pedagogico.models import Atividade, AtividadeVariacao, PerfilApoio, VariacaoAluno
+from apps.pedagogico.models import (
+    Atividade,
+    AtividadeVariacao,
+    PerfilApoio,
+    Trabalho,
+    VariacaoAluno,
+)
 
 from .anonimizar import anonimizar
+from .habilidades import CODIGOS_HABILIDADES, HABILIDADES, NOMES_HABILIDADES
 from .llm import MODELO_PADRAO, LLMError, _extrair_json, _pedir_ao_gemini
 
 MAX_GRUPOS_ADAPTADOS = 4
+# Uma habilidade só agrupa o aluno quando aparece em pelo menos 2 trabalhos dele.
+MIN_TRABALHOS_HABILIDADE = 2
 
 PROMPT_VARIACAO_ATIVIDADE = (
     "Você é um assistente pedagógico especialista em educação inclusiva.\n"
-    "Adapte o texto da atividade abaixo considerando APENAS as necessidades "
-    "pedagógicas, estratégias e interesses informados.\n"
+    "Adapte o texto da atividade abaixo considerando APENAS a habilidade a reforçar, "
+    "as necessidades pedagógicas, as estratégias e os interesses informados.\n"
+    "Se houver 'habilidade_a_reforcar', acrescente apoio para ela dentro das próprias "
+    "questões (dica curta, exemplo parecido já resolvido, passo a passo), sem trocar "
+    "nem tirar questões.\n"
     "REGRAS OBRIGATÓRIAS:\n"
     "- Mantenha o objetivo de aprendizagem, TODAS as questões, a numeração e "
     "TODOS os números dos problemas exatamente como no original; adapte apenas a "
@@ -60,11 +73,17 @@ class GrupoVariacao:
     necessidades: list[str] = field(default_factory=list)
     estrategias: list[str] = field(default_factory=list)
     alunos: list[Aluno] = field(default_factory=list)
+    # Código da habilidade a reforçar (services/habilidades.py); "" quando o grupo é só de formato.
+    habilidade: str = ""
 
     @property
     def tokens(self) -> set[str]:
         texto = " ".join(self.necessidades + self.estrategias).lower()
-        return {t for t in re.findall(r"[a-zà-ú0-9]+", texto) if len(t) > 2}
+        tokens = {t for t in re.findall(r"[a-zà-ú0-9]+", texto) if len(t) > 2}
+        if self.habilidade:
+            # Mesma habilidade e mesma área (LP/MA) pesam na hora de mesclar grupos.
+            tokens |= {f"hab:{self.habilidade}", f"area:{self.habilidade.split('-', 1)[0]}"}
+        return tokens
 
 
 def _limpar_texto_clinico(texto: str) -> str:
@@ -121,13 +140,42 @@ def _como_lista(valor) -> list:
     return []
 
 
+def habilidade_principal_por_aluno(alunos: list[Aluno]) -> dict[int, str]:
+    """Habilidade a reforçar mais frequente nos trabalhos de cada aluno (mínimo de 2)."""
+    contagem: dict[int, dict[str, int]] = {}
+    trabalhos = Trabalho.objects.filter(aluno__in=alunos, deleted__isnull=True).values_list(
+        "aluno_id", "habilidades_a_reforcar"
+    )
+    for aluno_id, codigos in trabalhos:
+        for codigo in set(codigos or []):
+            if codigo in CODIGOS_HABILIDADES:
+                por_aluno = contagem.setdefault(aluno_id, {})
+                por_aluno[codigo] = por_aluno.get(codigo, 0) + 1
+
+    ordem = {h["codigo"]: i for i, h in enumerate(HABILIDADES)}
+    principal: dict[int, str] = {}
+    for aluno_id, por_codigo in contagem.items():
+        elegiveis = [
+            (-n, ordem[c], c) for c, n in por_codigo.items() if n >= MIN_TRABALHOS_HABILIDADE
+        ]
+        if elegiveis:
+            principal[aluno_id] = min(elegiveis)[2]
+    return principal
+
+
 def agrupar_perfis_apoio(
     alunos: list[Aluno],
     max_grupos: int = MAX_GRUPOS_ADAPTADOS,
 ) -> tuple[list[Aluno], list[GrupoVariacao]]:
-    """Separa alunos sem perfil ativo (versão geral) e agrupa os com perfil em até max_grupos."""
+    """Agrupa os alunos pela habilidade a reforçar e pelas necessidades de formato.
+
+    Quem não tem habilidade a reforçar nem necessidade fica na versão geral. Os grupos
+    passam de max_grupos? Mescla os mais parecidos (mesma habilidade/área primeiro).
+    """
     if not alunos:
         return [], []
+
+    habilidades = habilidade_principal_por_aluno(alunos)
 
     perfis_ativos = {
         p.aluno_id: p
@@ -149,16 +197,18 @@ def agrupar_perfis_apoio(
         else:
             necessidades, estrategias = _perfil_dos_metadados(aluno)
 
-        if not necessidades and not estrategias:
+        habilidade = habilidades.get(aluno.id, "")
+        if not habilidade and not necessidades and not estrategias:
             alunos_geral.append(aluno)
             continue
 
-        chave = tuple(sorted(n.lower() for n in (necessidades or estrategias)))
+        chave = (habilidade, *sorted(n.lower() for n in (necessidades or estrategias)))
         if chave not in grupos_por_chave:
             grupos_por_chave[chave] = GrupoVariacao(
                 necessidades=list(necessidades),
                 estrategias=list(estrategias),
                 alunos=[aluno],
+                habilidade=habilidade,
             )
         else:
             grupo = grupos_por_chave[chave]
@@ -187,6 +237,8 @@ def agrupar_perfis_apoio(
         base = grupos[idx_a]
         absorvido = grupos.pop(idx_b)
         base.alunos.extend(absorvido.alunos)
+        if not base.habilidade or len(absorvido.alunos) > len(base.alunos) - len(absorvido.alunos):
+            base.habilidade = absorvido.habilidade or base.habilidade
         for n in absorvido.necessidades:
             if n not in base.necessidades:
                 base.necessidades.append(n)
@@ -222,6 +274,8 @@ def _gerar_conteudo_adaptado(
         "necessidades_pedagogicas": grupo.necessidades,
         "estrategias_pedagogicas": grupo.estrategias,
     }
+    if grupo.habilidade:
+        payload_bruto["habilidade_a_reforcar"] = NOMES_HABILIDADES[grupo.habilidade]
     payload_limpo = _anonimizar_payload_turma(payload_bruto, todos_alunos)
     conteudo_prompt = (
         PROMPT_VARIACAO_ATIVIDADE + "\n\n" + json.dumps(payload_limpo, ensure_ascii=False)
@@ -345,6 +399,7 @@ def gerar_variacoes_atividade(
                 eh_geral=False,
                 conteudo=conteudo_adaptado,
                 adaptacoes_feitas=adaptacoes,
+                habilidade=grupo.habilidade,
                 status=AtividadeVariacao.StatusChoices.RASCUNHO,
             )
             for aluno in grupo.alunos:

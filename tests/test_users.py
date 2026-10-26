@@ -10,6 +10,15 @@ from .factories import SENHA
 REGISTER = "/api/auth/register/"
 
 
+@pytest.fixture
+def user(db):
+    # Os testes de login deste arquivo cobrem o fluxo com OTP; o padrão (sem OTP) fica
+    # nos testes de login direto no fim do arquivo.
+    from .factories import UserFactory
+
+    return UserFactory(email="ana@example.com", name="Ana", otp_ativo=True)
+
+
 @pytest.mark.django_db
 def test_registro_ok(api_client):
     resp = api_client.post(
@@ -317,3 +326,53 @@ def test_email_otp_tem_html_com_digitos_e_logo_embutida(api_client, user):
         assert f">{digito}</td>" in html
     anexos = email.message().get_payload()
     assert any(parte.get("Content-ID") == "<logo-marsupi>" for parte in anexos)
+
+
+def test_otp_vem_desligado_por_padrao(db):
+    from .factories import UserFactory
+
+    assert UserFactory().otp_ativo is False
+
+
+def test_login_sem_otp_entra_direto_com_tokens(api_client, db):
+    from .factories import UserFactory
+
+    professora = UserFactory()
+    resp = api_client.post(
+        "/api/auth/login/", {"matricula": professora.matricula, "password": SENHA}
+    )
+
+    assert resp.status_code == 200
+    dados = resp.json()
+    assert dados["otp_required"] is False
+    assert dados["access"] and dados["refresh"]
+    assert "otp_token" not in dados
+    assert len(mail.outbox) == 0
+
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {dados['access']}")
+    assert api_client.get("/api/auth/me/").json()["otp_ativo"] is False
+
+
+def test_login_com_otp_ativo_exige_codigo(api_client, user):
+    resp = api_client.post("/api/auth/login/", {"matricula": user.matricula, "password": SENHA})
+
+    dados = resp.json()
+    assert dados["otp_required"] is True
+    assert "otp_token" in dados
+    assert "access" not in dados
+    assert len(mail.outbox) == 1
+
+
+def test_professora_liga_e_desliga_otp_no_perfil(api_client, db):
+    from .factories import UserFactory
+
+    professora = UserFactory()
+    api_client.force_authenticate(user=professora)
+
+    assert api_client.patch("/api/auth/me/", {"otp_ativo": True}).json()["otp_ativo"] is True
+    professora.refresh_from_db()
+    assert professora.otp_ativo is True
+
+    api_client.patch("/api/auth/me/", {"otp_ativo": False})
+    professora.refresh_from_db()
+    assert professora.otp_ativo is False

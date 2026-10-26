@@ -28,6 +28,8 @@ class AtividadeVariacao(BaseModel):
     )
     editada_manual = models.BooleanField("editada manualmente", default=False)
     adaptacoes_feitas = models.JSONField("adaptações feitas", default=list, blank=True)
+    # Habilidade a reforçar do grupo (código de services/habilidades.py); vazio = só formato.
+    habilidade = models.CharField("habilidade a reforçar", max_length=20, blank=True, default="")
     aprovada_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,

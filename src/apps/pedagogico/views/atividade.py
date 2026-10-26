@@ -25,6 +25,7 @@ from apps.pedagogico.services import (
     gerar_variacoes_atividade,
     processar_envio_trabalhos,
 )
+from apps.pedagogico.services.habilidades import NOMES_HABILIDADES
 
 
 @extend_schema_view(
@@ -125,6 +126,8 @@ class AtividadeViewSet(viewsets.ModelViewSet):
                 "rotulo": variacao.rotulo,
                 "eh_geral": variacao.eh_geral,
                 "status": variacao.status,
+                "habilidade": variacao.habilidade,
+                "habilidade_nome": NOMES_HABILIDADES.get(variacao.habilidade, ""),
                 "alunos": [
                     {
                         "id": atribuicao.aluno.id,
