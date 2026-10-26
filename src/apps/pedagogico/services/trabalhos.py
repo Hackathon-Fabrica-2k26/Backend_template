@@ -14,6 +14,11 @@ from apps.alunos.models import Aluno
 from apps.alunos.services import alunos_com_consentimento
 from apps.escolas.services.escola_usuario import config_ia_do_usuario
 from apps.pedagogico.models import Atividade, EnvioTrabalhos, Relatorio, Trabalho
+from apps.pedagogico.services.habilidades import (
+    NOMES_HABILIDADES,
+    filtrar_codigos,
+    habilidades_para_prompt,
+)
 from apps.pedagogico.services.llm import DISCLAIMER, LLMError
 
 TAMANHO_MAXIMO_BYTES = 20 * 1024 * 1024  # 20 MB
@@ -119,26 +124,34 @@ def analisar_trabalho_com_gemini(
         raise LLMError("Chave de API do provedor de IA não configurada.")
 
     prompt = (
-        "Você é um assistente pedagógico especializado em educação inclusiva.\n"
-        "Analise o trabalho escolar enviado e extraia as seguintes informações:\n"
-        "1. 'nome_lido': O nome do estudante escrito no cabeçalho ou corpo do trabalho "
-        "(se não houver nome visível, retorne string vazia '').\n"
-        "2. 'descricao': Descrição detalhada do trabalho e do que o estudante realizou.\n"
-        "3. 'analise_pedagogica': Objeto JSON com:\n"
-        "   - 'pontos_fortes': lista de pontos fortes demonstrados na execução;\n"
-        "   - 'dificuldades_identificadas': lista de dificuldades ou pontos de atenção;\n"
-        "   - 'habilidades_observadas': lista de habilidades trabalhadas;\n"
-        "   - 'sugestoes_intervencao': lista de sugestões práticas para o professor;\n"
-        "   - 'observacoes': resumo pedagógico geral.\n\n"
+        "Você é um assistente pedagógico de uma professora do 1º ano do Ensino Fundamental.\n"
+        "Analise o trabalho escolar enviado e extraia:\n"
+        "1. 'nome_lido': o nome do estudante escrito no trabalho ('' se não houver).\n"
+        "2. 'descricao': o que a atividade pede e o que o estudante fez, em poucas frases.\n"
+        "3. 'habilidades_demonstradas': códigos da lista abaixo que o estudante mostrou "
+        "dominar neste trabalho.\n"
+        "4. 'habilidades_a_reforcar': códigos da lista abaixo que este trabalho mostra que "
+        "ainda precisam de prática (no máximo 3; lista vazia se não houver evidência clara).\n"
+        "5. 'analise_pedagogica': objeto com 'pontos_fortes', 'pontos_de_atencao' e "
+        "'sugestoes_para_professora' (listas de frases curtas) e 'observacoes' (texto).\n\n"
+        "Use SOMENTE códigos desta lista (habilidades do 1º ano, referência BNCC):\n"
+        f"{habilidades_para_prompt()}\n\n"
+        "REGRAS:\n"
+        "- Descreva o que foi observado NESTE trabalho, sem generalizar sobre a criança.\n"
+        "- NUNCA faça diagnóstico nem cite transtornos, CID, laudos ou condições clínicas.\n"
+        "- Não use as palavras 'dificuldade', 'déficit' ou 'atraso'; fale em habilidade a "
+        "reforçar.\n"
+        "- Não repita o nome do estudante fora de 'nome_lido'.\n\n"
         "Responda EXCLUSIVAMENTE com um JSON válido no formato:\n"
         "{\n"
         '  "nome_lido": "...",\n'
         '  "descricao": "...",\n'
+        '  "habilidades_demonstradas": ["CODIGO"],\n'
+        '  "habilidades_a_reforcar": ["CODIGO"],\n'
         '  "analise_pedagogica": {\n'
         '    "pontos_fortes": ["..."],\n'
-        '    "dificuldades_identificadas": ["..."],\n'
-        '    "habilidades_observadas": ["..."],\n'
-        '    "sugestoes_intervencao": ["..."],\n'
+        '    "pontos_de_atencao": ["..."],\n'
+        '    "sugestoes_para_professora": ["..."],\n'
         '    "observacoes": "..."\n'
         "  }\n"
         "}"
@@ -188,6 +201,8 @@ def analisar_trabalho_com_gemini(
             if isinstance(dados.get("analise_pedagogica"), dict)
             else {}
         ),
+        "habilidades_demonstradas": filtrar_codigos(dados.get("habilidades_demonstradas")),
+        "habilidades_a_reforcar": filtrar_codigos(dados.get("habilidades_a_reforcar"), limite=3),
     }
 
 
@@ -259,6 +274,11 @@ def _gerar_relatorio_de_trabalho(trabalho: Trabalho) -> Relatorio:
         "nome_lido": trabalho.nome_lido,
         "descricao": trabalho.descricao_ia,
         "analise_pedagogica": trabalho.dados_analise,
+        "habilidades_a_reforcar": [
+            {"codigo": c, "nome": NOMES_HABILIDADES[c]}
+            for c in trabalho.habilidades_a_reforcar
+            if c in NOMES_HABILIDADES
+        ],
     }
     return Relatorio.objects.create(
         aluno=trabalho.aluno,
@@ -331,12 +351,12 @@ def processar_envio_trabalhos(
             confianca_nome=confianca,
             identificacao=identificacao,
             confirmado_por=(
-                usuario
-                if identificacao == Trabalho.IdentificacaoChoices.CONFIRMADA
-                else None
+                usuario if identificacao == Trabalho.IdentificacaoChoices.CONFIRMADA else None
             ),
             descricao_ia=descricao_ia,
             dados_analise=analise_pedagogica,
+            habilidades_demonstradas=resultado_ia.get("habilidades_demonstradas", []),
+            habilidades_a_reforcar=resultado_ia.get("habilidades_a_reforcar", []),
             status=Trabalho.StatusChoices.ANALISADO,
         )
 

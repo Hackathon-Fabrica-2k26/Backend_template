@@ -5,6 +5,7 @@ from apps.pedagogico.views import (
     AtividadeExtrairView,
     AtividadeVariacaoViewSet,
     AtividadeViewSet,
+    HabilidadeListView,
     PerfilApoioViewSet,
     RelatorioViewSet,
     TrabalhoViewSet,
@@ -21,5 +22,6 @@ router.register("relatorios", RelatorioViewSet, basename="relatorio")
 # Antepostas ao router para não serem interpretadas como detail (pk="extrair" / pk="gerar").
 urlpatterns = [
     path("atividades/extrair/", AtividadeExtrairView.as_view(), name="atividade-extrair"),
+    path("habilidades/", HabilidadeListView.as_view(), name="habilidades"),
     path("relatorios/gerar/", RelatorioGerarView.as_view(), name="relatorio-gerar"),
 ] + router.urls
