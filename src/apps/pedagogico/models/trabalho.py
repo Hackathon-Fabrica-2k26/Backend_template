@@ -103,6 +103,11 @@ class Trabalho(BaseModel):
     )
     descricao_ia = models.TextField("descrição da IA", blank=True, default="")
     dados_analise = models.JSONField("dados da análise", default=dict, blank=True)
+    # Códigos de services/habilidades.py (lista fixa do 1º ano); base dos grupos de reforço.
+    habilidades_demonstradas = models.JSONField(
+        "habilidades demonstradas", default=list, blank=True
+    )
+    habilidades_a_reforcar = models.JSONField("habilidades a reforçar", default=list, blank=True)
     status = models.CharField(
         "status",
         max_length=15,
