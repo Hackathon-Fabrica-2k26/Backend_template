@@ -61,33 +61,54 @@ FORMATO_RESPOSTA = (
 )
 
 FORMATO_SUGESTAO_ATIVIDADE = (
-    "Com base no texto pedagógico abaixo, sugira um título curto e uma "
-    "descrição/objetivo pedagógico curto em português do Brasil, sem incluir "
-    "dados pessoais.\n"
-    "Responda APENAS com um JSON válido, sem nenhum texto antes ou depois, "
-    "no formato:\n"
-    '{\n  "titulo": "...",\n  "descricao": "..."\n}'
+    "Analise o texto abaixo e avalie se ele corresponde a uma atividade escolar, "
+    "tarefa, exercício, prova ou proposta pedagógica.\n"
+    "Se o documento NÃO for uma atividade escolar (por exemplo: boletim de urna, documento "
+    "oficial, receita médica, extrato bancário, cardápio, meme, etc.), defina "
+    "`documento_valido` como false, identifique o `tipo_documento` e descreva um `motivo` "
+    "curto em português do Brasil.\n\n"
+    "Se for uma atividade escolar válida:\n"
+    "Defina `documento_valido` como true, `tipo_documento` como 'atividade', `motivo` como '', e "
+    "sugira um título curto e uma descrição/objetivo pedagógico curto em português do Brasil, "
+    "sem incluir dados pessoais.\n\n"
+    "Responda APENAS com um JSON válido, sem nenhum texto antes ou depois, no formato:\n"
+    "{\n"
+    '  "documento_valido": true,\n'
+    '  "tipo_documento": "atividade",\n'
+    '  "motivo": "",\n'
+    '  "titulo": "...",\n'
+    '  "descricao": "..."\n'
+    "}"
 )
 
 FORMATO_EXTRACAO_MULTIMODAL = """
-Analise o arquivo enviado, que pode ser uma imagem de atividade ou um PDF
-digitalizado.
+Analise o arquivo enviado, que pode ser uma imagem de atividade ou um PDF digitalizado.
 
-Extraia fielmente todo o texto legível, preservando enunciados, questões,
-alternativas, instruções e organização sempre que possível.
-Não invente trechos ilegíveis. Se algum conteúdo não puder ser lido,
-indique isso de forma breve no texto extraído.
+Primeiro, verifique se o arquivo é realmente uma atividade, tarefa, exercício, prova ou
+proposta pedagógica escolar.
+Se o documento NÃO for uma atividade escolar (por exemplo: boletim de urna, documento oficial,
+receita, recibo, cardápio, meme, etc.), defina "documento_valido" como false,
+identifique o "tipo_documento" e descreva um "motivo" curto da recusa.
 
-Além disso, sugira um título curto e uma descrição pedagógica objetiva.
-Não inclua dados pessoais desnecessários.
+Se for uma atividade escolar válida:
+Defina "documento_valido" como true, "tipo_documento" como "atividade" e "motivo" como "".
+Extraia fielmente todo o texto legível, preservando enunciados, questões, alternativas,
+instruções e organização sempre que possível.
+Não invente trechos ilegíveis. Se algum conteúdo não puder ser lido, indique isso de forma
+breve no texto extraído.
+Além disso, sugira um título curto e uma descrição pedagógica objetiva. Não inclua dados
+pessoais desnecessários.
 
 Responda APENAS com um JSON válido, sem texto antes ou depois:
 {
+  "documento_valido": true,
+  "tipo_documento": "atividade",
+  "motivo": "",
   "texto_original": "texto extraído do arquivo",
   "titulo": "título da atividade",
   "descricao": "descrição pedagógica"
 }
-Todos os campos devem ser strings em português do Brasil.
+Todos os campos devem ser strings em português do Brasil, exceto documento_valido que é booleano.
 """
 
 MAX_RESPOSTA_TOKENS = 8192
@@ -108,6 +129,20 @@ class LLMError(Exception):
         super().__init__(
             mensagem or "Não foi possível gerar o relatório agora. Tente novamente em instantes."
         )
+
+
+class DocumentoRecusadoError(Exception):
+    """Lançada quando a IA detecta que o documento enviado não corresponde ao tipo esperado."""
+
+    def __init__(
+        self,
+        mensagem: str = "Documento recusado.",
+        tipo_documento: str = "outro",
+        motivo: str = "",
+    ):
+        super().__init__(mensagem)
+        self.tipo_documento = tipo_documento or "outro"
+        self.motivo = motivo or ""
 
 
 def gerar_relatorio(
@@ -174,6 +209,17 @@ def sugerir_atividade(
         if not isinstance(dados, dict):
             raise LLMError()
 
+        doc_valido = dados.get("documento_valido")
+        if doc_valido is False or str(doc_valido or "").lower() == "false":
+            tipo_doc = str(dados.get("tipo_documento") or "outro")
+            motivo_padrao = "O arquivo enviado não parece uma atividade escolar."
+            motivo = str(dados.get("motivo") or motivo_padrao)
+            raise DocumentoRecusadoError(
+                "Este arquivo não parece uma atividade escolar.",
+                tipo_documento=tipo_doc,
+                motivo=motivo,
+            )
+
         titulo = str(dados.get("titulo") or "").strip()[:255]
         descricao = str(dados.get("descricao") or "").strip()
 
@@ -184,6 +230,8 @@ def sugerir_atividade(
             "titulo": titulo,
             "descricao": descricao,
         }
+    except DocumentoRecusadoError:
+        raise
     except Exception:
         return {
             "titulo": titulo_fallback,
@@ -245,6 +293,17 @@ def extrair_atividade_multimodal(
         if not isinstance(dados, dict):
             raise LLMError()
 
+        doc_valido = dados.get("documento_valido")
+        if doc_valido is False or str(doc_valido or "").lower() == "false":
+            tipo_doc = str(dados.get("tipo_documento") or "outro")
+            motivo_padrao = "O arquivo enviado não parece uma atividade escolar."
+            motivo = str(dados.get("motivo") or motivo_padrao)
+            raise DocumentoRecusadoError(
+                "Este arquivo não parece uma atividade escolar.",
+                tipo_documento=tipo_doc,
+                motivo=motivo,
+            )
+
         campos = ("texto_original", "titulo", "descricao")
         resultado = {campo: str(dados.get(campo) or "").strip() for campo in campos}
 
@@ -254,7 +313,7 @@ def extrair_atividade_multimodal(
         resultado["titulo"] = resultado["titulo"][:255]
         return resultado
 
-    except LLMError:
+    except (LLMError, DocumentoRecusadoError):
         raise
     except Exception as erro:
         raise LLMError() from erro

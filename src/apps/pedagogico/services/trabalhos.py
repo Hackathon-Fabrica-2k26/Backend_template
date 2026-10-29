@@ -125,7 +125,15 @@ def analisar_trabalho_com_gemini(
 
     prompt = (
         "Você é um assistente pedagógico de uma professora do 1º ano do Ensino Fundamental.\n"
-        "Analise o trabalho escolar enviado e extraia:\n"
+        "Primeiro, verifique se o arquivo enviado é de fato um trabalho escolar, lição, "
+        "exercício ou produção de estudante.\n"
+        "Se o arquivo NÃO for um trabalho escolar (por exemplo: documento oficial, "
+        "boletim de urna, comprovante, receita médica, panfleto, notícia, meme, etc.), defina "
+        "'documento_valido' como false, identifique o 'tipo_documento' e descreva um 'motivo' "
+        "curto da recusa em português do Brasil.\n\n"
+        "Se for um trabalho escolar válido:\n"
+        "Defina 'documento_valido' como true, 'tipo_documento' como 'trabalho escolar', "
+        "'motivo' como '', e extraia:\n"
         "1. 'nome_lido': o nome do estudante escrito no trabalho ('' se não houver).\n"
         "2. 'descricao': o que a atividade pede e o que o estudante fez, em poucas frases.\n"
         "3. 'habilidades_demonstradas': códigos da lista abaixo que o estudante mostrou "
@@ -144,6 +152,9 @@ def analisar_trabalho_com_gemini(
         "- Não repita o nome do estudante fora de 'nome_lido'.\n\n"
         "Responda EXCLUSIVAMENTE com um JSON válido no formato:\n"
         "{\n"
+        '  "documento_valido": true,\n'
+        '  "tipo_documento": "trabalho escolar",\n'
+        '  "motivo": "",\n'
         '  "nome_lido": "...",\n'
         '  "descricao": "...",\n'
         '  "habilidades_demonstradas": ["CODIGO"],\n'
@@ -193,7 +204,25 @@ def analisar_trabalho_com_gemini(
     if not isinstance(dados, dict):
         raise LLMError("Resposta da IA deve ser um objeto JSON.")
 
+    doc_valido = dados.get("documento_valido")
+    if doc_valido is False or str(doc_valido or "").lower() == "false":
+        tipo_doc = str(dados.get("tipo_documento") or "outro")
+        motivo = str(dados.get("motivo") or "Este arquivo não parece um trabalho escolar.")
+        return {
+            "documento_valido": False,
+            "tipo_documento": tipo_doc,
+            "motivo": motivo,
+            "nome_lido": "",
+            "descricao": motivo,
+            "analise_pedagogica": {},
+            "habilidades_demonstradas": [],
+            "habilidades_a_reforcar": [],
+        }
+
     return {
+        "documento_valido": True,
+        "tipo_documento": str(dados.get("tipo_documento") or "trabalho escolar"),
+        "motivo": "",
         "nome_lido": str(dados.get("nome_lido") or "").strip(),
         "descricao": str(dados.get("descricao") or "").strip(),
         "analise_pedagogica": (
@@ -326,6 +355,27 @@ def processar_envio_trabalhos(
             # Descarte explícito da referência de bytes após análise (LGPD)
             del conteudo_bytes
 
+        doc_valido = resultado_ia.get("documento_valido")
+        if doc_valido is False or str(doc_valido or "").lower() == "false":
+            motivo = resultado_ia.get("motivo") or "Este arquivo não parece um trabalho escolar."
+            tipo_doc = resultado_ia.get("tipo_documento") or "outro"
+            Trabalho.objects.create(
+                envio=envio,
+                atividade=atividade,
+                aluno=None,
+                identificacao=Trabalho.IdentificacaoChoices.SEM_ALUNO,
+                status=Trabalho.StatusChoices.ERRO,
+                descricao_ia=motivo,
+                dados_analise={
+                    "erro": "Este arquivo não parece um trabalho escolar.",
+                    "tipo_documento": tipo_doc,
+                    "motivo": motivo,
+                },
+                habilidades_demonstradas=[],
+                habilidades_a_reforcar=[],
+            )
+            continue
+
         nome_lido = resultado_ia["nome_lido"]
         descricao_ia = resultado_ia["descricao"]
         analise_pedagogica = resultado_ia["analise_pedagogica"]
@@ -377,6 +427,9 @@ def confirmar_trabalho(
     usuario=None,
 ) -> Trabalho:
     """Confirma manualmente o aluno de um trabalho e gera o relatório se ainda não existir."""
+    if trabalho.status == Trabalho.StatusChoices.ERRO:
+        raise ValueError("Trabalhos com status de erro não podem ser confirmados.")
+
     trabalho.aluno = aluno
     trabalho.identificacao = Trabalho.IdentificacaoChoices.CONFIRMADA
     trabalho.confianca_nome = 1.0

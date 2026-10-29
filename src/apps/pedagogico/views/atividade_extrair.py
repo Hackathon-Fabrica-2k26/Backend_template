@@ -1,4 +1,5 @@
 
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiRequest, extend_schema
 from rest_framework import serializers, status
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -9,6 +10,7 @@ from apps.escolas.models import Turma
 from apps.escolas.services.escola_usuario import config_ia_do_usuario
 from apps.pedagogico.services import (
     MODELO_PADRAO,
+    DocumentoRecusadoError,
     ExtracaoError,
     LLMError,
     extrair_atividade_multimodal,
@@ -77,7 +79,10 @@ class AtividadeExtrairView(APIView):
             request=AtividadeExtrairUploadSerializer,
             encoding={"arquivo": {"contentType": "application/octet-stream"}},
         ),
-        responses={200: AtividadeExtrairRespostaSerializer},
+        responses={
+            200: AtividadeExtrairRespostaSerializer,
+            422: OpenApiTypes.OBJECT,
+        },
     )
     def post(self, request):
         # Processa o multipart para que o upload handler detecte
@@ -151,6 +156,15 @@ class AtividadeExtrairView(APIView):
                     modelo=modelo,
                 )
 
+        except DocumentoRecusadoError as erro:
+            return Response(
+                {
+                    "erro": str(erro),
+                    "tipo_documento": erro.tipo_documento,
+                    "motivo": erro.motivo,
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
         except LLMError as erro:
             return Response(
                 {"detail": str(erro)},
