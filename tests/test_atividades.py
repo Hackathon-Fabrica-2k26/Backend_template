@@ -382,3 +382,83 @@ def test_rejeita_arquivo_acima_limite_real(auth_client, db):
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "20 MB" in str(response.data)
+
+
+def test_extrair_atividade_documento_invalido_multimodal_retorna_422(
+    auth_client, db, user, monkeypatch
+):
+    user.escola = EscolaFactory()
+    user.save()
+
+    def fake_generate_content(*args, **kwargs):
+        class RespostaFake:
+            text = (
+                '{"documento_valido": false, "tipo_documento": "boletim de urna", '
+                '"motivo": "Este arquivo é um boletim de urna eleitoral, não uma atividade.", '
+                '"texto_original": "", "titulo": "", "descricao": ""}'
+            )
+
+        return RespostaFake()
+
+    monkeypatch.setattr(
+        "google.genai.models.Models.generate_content",
+        fake_generate_content,
+    )
+
+    arquivo = SimpleUploadedFile(
+        "boletim.png",
+        b"bytes simulando imagem de boletim",
+        content_type="image/png",
+    )
+
+    contagem_antes = Atividade.objects.count()
+
+    response = auth_client.post(
+        EXTRAIR_URL,
+        {"arquivo": arquivo},
+        format="multipart",
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    dados = response.json()
+    assert dados["erro"] == "Este arquivo não parece uma atividade escolar."
+    assert dados["tipo_documento"] == "boletim de urna"
+    assert "boletim de urna" in dados["motivo"]
+    assert Atividade.objects.count() == contagem_antes
+
+
+def test_extrair_atividade_documento_invalido_texto_retorna_422(
+    auth_client, db, user, monkeypatch
+):
+    user.escola = EscolaFactory()
+    user.save()
+
+    def fake_gemini(conteudo, api_key, modelo):
+        return (
+            '{"documento_valido": false, "tipo_documento": "receita médica", '
+            '"motivo": "O documento refere-se a uma receita médica particular.", '
+            '"titulo": "", "descricao": ""}'
+        )
+
+    monkeypatch.setattr("apps.pedagogico.services.llm._pedir_ao_gemini", fake_gemini)
+
+    arquivo_docx = _gerar_docx_em_memoria(
+        "Tomar Paracetamol 500mg de 8 em 8 horas se dor.",
+        nome="receita.docx",
+    )
+
+    contagem_antes = Atividade.objects.count()
+
+    response = auth_client.post(
+        EXTRAIR_URL,
+        {"arquivo": arquivo_docx},
+        format="multipart",
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    dados = response.json()
+    assert dados["erro"] == "Este arquivo não parece uma atividade escolar."
+    assert dados["tipo_documento"] == "receita médica"
+    assert "receita médica" in dados["motivo"]
+    assert Atividade.objects.count() == contagem_antes
+
