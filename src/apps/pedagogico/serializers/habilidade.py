@@ -30,7 +30,3 @@ class HabilidadeTurmaSerializer(serializers.Serializer):
         min_value=0,
         help_text="Quantidade de alunos da turma com esta habilidade em reforço.",
     )
-    alunos_em_reforco = serializers.IntegerField(
-        min_value=0,
-        help_text="Alias de total_alunos_reforco.",
-    )

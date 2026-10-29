@@ -5,6 +5,7 @@ from xml.sax.saxutils import escape
 from django.db.models import Count, Q, QuerySet
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -15,7 +16,6 @@ from reportlab.platypus import (
     SimpleDocTemplate,
     Spacer,
 )
-from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response

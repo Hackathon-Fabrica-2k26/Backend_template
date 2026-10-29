@@ -66,7 +66,14 @@ def calcular_habilidades_aluno(aluno: Any) -> list[dict[str, Any]]:
     from apps.pedagogico.models import Trabalho
 
     trabalhos = (
-        Trabalho.objects.filter(aluno=aluno, deleted__isnull=True)
+        Trabalho.objects.filter(
+            aluno=aluno,
+            deleted__isnull=True,
+            identificacao__in=[
+                Trabalho.IdentificacaoChoices.CONFIRMADA,
+                Trabalho.IdentificacaoChoices.AUTOMATICA,
+            ],
+        )
         .exclude(status=Trabalho.StatusChoices.ERRO)
         .order_by("created_at")
     )
@@ -128,13 +135,19 @@ def calcular_habilidades_turma(turma: Any) -> list[dict[str, Any]]:
                 "area": h["area"],
                 "nome": h["nome"],
                 "total_alunos_reforco": 0,
-                "alunos_em_reforco": 0,
             }
             for h in HABILIDADES
         ]
 
     trabalhos = (
-        Trabalho.objects.filter(aluno__in=alunos_validos, deleted__isnull=True)
+        Trabalho.objects.filter(
+            aluno__in=alunos_validos,
+            deleted__isnull=True,
+            identificacao__in=[
+                Trabalho.IdentificacaoChoices.CONFIRMADA,
+                Trabalho.IdentificacaoChoices.AUTOMATICA,
+            ],
+        )
         .exclude(status=Trabalho.StatusChoices.ERRO)
         .values_list("aluno_id", "habilidades_a_reforcar")
     )
@@ -161,7 +174,6 @@ def calcular_habilidades_turma(turma: Any) -> list[dict[str, Any]]:
                 "area": h["area"],
                 "nome": h["nome"],
                 "total_alunos_reforco": total,
-                "alunos_em_reforco": total,
             }
         )
     return resultado

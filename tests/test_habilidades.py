@@ -230,7 +230,11 @@ def test_turma_habilidades_resumo_sem_nomes_e_ignora_sem_consentimento(auth_clie
     TrabalhoFactory(envio=envio, aluno=aluno1, habilidades_a_reforcar=["LP-ALFABETO"])
 
     # Aluno 2: 1 trabalho com LP-ALFABETO (não atinge 2), 2 com MA-NUM-ESCR -> em_reforco=True
-    TrabalhoFactory(envio=envio, aluno=aluno2, habilidades_a_reforcar=["LP-ALFABETO", "MA-NUM-ESCR"])
+    TrabalhoFactory(
+        envio=envio,
+        aluno=aluno2,
+        habilidades_a_reforcar=["LP-ALFABETO", "MA-NUM-ESCR"],
+    )
     TrabalhoFactory(envio=envio, aluno=aluno2, habilidades_a_reforcar=["MA-NUM-ESCR"])
 
     # Aluno 3 (sem consentimento): 3 trabalhos com LP-ALFABETO -> DEVE SER IGNORADO
@@ -256,3 +260,40 @@ def test_turma_habilidades_resumo_sem_nomes_e_ignora_sem_consentimento(auth_clie
     assert "Aluno Dois" not in payload_str
     assert "Aluno Tres" not in payload_str
     assert "dificuldade" not in payload_str.lower()
+
+
+@pytest.mark.django_db
+def test_trabalho_pendente_nao_entra_no_calculo_de_habilidades(auth_client):
+    prof = UserFactory()
+    turma = TurmaFactory(professores=[prof])
+    aluno = AlunoFactory(turma=turma, nome="Lucas Teste")
+    atividade = AtividadeFactory(turma=turma, criada_por=prof)
+    envio = EnvioTrabalhosFactory(atividade=atividade, enviado_por=prof)
+    auth_client.force_authenticate(user=prof)
+
+    # 1 trabalho confirmado + 1 trabalho com identificacao pendente
+    TrabalhoFactory(
+        envio=envio,
+        aluno=aluno,
+        identificacao=Trabalho.IdentificacaoChoices.CONFIRMADA,
+        habilidades_a_reforcar=["LP-ALFABETO"],
+    )
+    TrabalhoFactory(
+        envio=envio,
+        aluno=aluno,
+        identificacao=Trabalho.IdentificacaoChoices.PENDENTE,
+        habilidades_a_reforcar=["LP-ALFABETO"],
+    )
+
+    # No cálculo individual do aluno, o pendente NÃO deve contar (total deve ser 1, não 2)
+    resp_aluno = auth_client.get(f"/api/alunos/{aluno.id}/habilidades/")
+    assert resp_aluno.status_code == status.HTTP_200_OK
+    hab_aluno = next(h for h in resp_aluno.json() if h["codigo"] == "LP-ALFABETO")
+    assert hab_aluno["trabalhos_a_reforcar"] == 1
+    assert hab_aluno["em_reforco"] is False
+
+    # No cálculo da turma, o aluno também NÃO deve constar em reforço
+    resp_turma = auth_client.get(f"/api/turmas/{turma.id}/habilidades/")
+    assert resp_turma.status_code == status.HTTP_200_OK
+    hab_turma = next(h for h in resp_turma.json() if h["codigo"] == "LP-ALFABETO")
+    assert hab_turma["total_alunos_reforco"] == 0

@@ -34,8 +34,9 @@ class TurmaViewSet(viewsets.ModelViewSet):
         summary="Resumo de habilidades a reforçar da turma",
         description=(
             "Retorna para cada habilidade da lista fixa (1º ano BNCC) o total de alunos da turma "
-            "que estão em reforço (>= 2 trabalhos a reforçar). Apenas alunos com consentimento ativo "
-            "são contabilizados e nenhum nome é incluído na resposta agregada (LGPD)."
+            "que estão em reforço (>= 2 trabalhos a reforçar). Apenas alunos com "
+            "consentimento ativo são contabilizados e nenhum nome é incluído na resposta "
+            "agregada (LGPD)."
         ),
         responses={
             200: HabilidadeTurmaSerializer(many=True),
