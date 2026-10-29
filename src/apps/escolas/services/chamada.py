@@ -26,12 +26,12 @@ SYSTEM_PROMPT_CHAMADA = (
     "Primeiro, verifique se o arquivo enviado é de fato uma lista de chamada escolar "
     "(ou diário de classe, lista de presença de alunos, lista de matrícula de turma).\n"
     "Se o documento NÃO for uma lista de chamada (por exemplo: boletim de urna, documento oficial, "
-    "notícia, laudo médico, documento pessoal, panfleto, cardápio, etc.), defina `documento_valido` como false, "
-    "identifique o `tipo_documento` e descreva brevemente o `motivo` da recusa em português, "
-    "devolvendo a lista `nomes` vazia.\n\n"
+    "notícia, laudo médico, documento pessoal, panfleto, cardápio, etc.), defina "
+    "`documento_valido` como false, identifique o `tipo_documento` e descreva brevemente o "
+    "`motivo` da recusa em português, devolvendo a lista `nomes` vazia.\n\n"
     "Se for uma lista de chamada escolar válida:\n"
-    "Defina `documento_valido` como true, `tipo_documento` como 'lista de chamada', `motivo` como '', "
-    "e extraia APENAS a coluna de nomes completos dos estudantes.\n"
+    "Defina `documento_valido` como true, `tipo_documento` como 'lista de chamada', "
+    "`motivo` como '', e extraia APENAS a coluna de nomes completos dos estudantes.\n"
     "Regras obrigatórias:\n"
     "- Foque exclusivamente na coluna de nomes dos alunos.\n"
     "- Ignore completamente datas de nascimento, observações (médicas ou pedagógicas), "
@@ -107,7 +107,8 @@ def reconhecer_nomes(
         logger.warning("Chamada: JSON do Gemini não é um dicionário (modelo=%s)", modelo)
         raise LLMError(MENSAGEM_ERRO_PADRAO)
 
-    if dados.get("documento_valido") is False or str(dados.get("documento_valido", "")).lower() == "false":
+    doc_valido = dados.get("documento_valido")
+    if doc_valido is False or str(doc_valido or "").lower() == "false":
         tipo_doc = str(dados.get("tipo_documento") or "outro")
         motivo = str(dados.get("motivo") or "O arquivo enviado não parece uma lista de chamada.")
         raise DocumentoRecusadoError(
@@ -123,10 +124,7 @@ def reconhecer_nomes(
     nomes = _limpar_nomes(dados["nomes"])
 
     # Defesa extra na chamada: lista sem nenhum nome com confianca >= 0.5 -> recusar
-    nomes_confiaveis = [
-        item for item in nomes
-        if float(item.get("confianca", 0.0)) >= 0.5
-    ]
+    nomes_confiaveis = [item for item in nomes if float(item.get("confianca", 0.0)) >= 0.5]
     if not nomes_confiaveis:
         tipo_doc = str(dados.get("tipo_documento") or "outro")
         motivo = str(
