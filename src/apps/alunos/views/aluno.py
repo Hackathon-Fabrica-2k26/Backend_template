@@ -15,14 +15,17 @@ from reportlab.platypus import (
     SimpleDocTemplate,
     Spacer,
 )
-from rest_framework import viewsets
+from drf_spectacular.utils import extend_schema
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.alunos.models import Aluno
 from apps.alunos.serializers import AlunoSerializer
+from apps.alunos.services import tem_consentimento_ativo
 from apps.pedagogico.models import Relatorio
-from apps.pedagogico.services import DISCLAIMER
+from apps.pedagogico.serializers import HabilidadeAlunoSerializer
+from apps.pedagogico.services import DISCLAIMER, calcular_habilidades_aluno
 
 
 class AlunoViewSet(viewsets.ModelViewSet):
@@ -30,6 +33,30 @@ class AlunoViewSet(viewsets.ModelViewSet):
     filterset_fields = ["turma", "ativo"]
     search_fields = ["nome", "matricula"]
     ordering_fields = ["nome", "created_at"]
+
+    @extend_schema(
+        summary="Evolução e histórico de habilidades do aluno",
+        description=(
+            "Retorna para cada habilidade da lista fixa (1º ano BNCC) o total de trabalhos "
+            "em que a habilidade foi identificada a reforçar e demonstrada, a data do último "
+            "trabalho e se está em reforço (>= 2 trabalhos a reforçar). Exige consentimento ativo."
+        ),
+        responses={
+            200: HabilidadeAlunoSerializer(many=True),
+            403: {"description": "Aluno sem consentimento ativo para uso de IA."},
+            404: {"description": "Aluno não encontrado ou não pertence às turmas do professor."},
+        },
+    )
+    @action(detail=True, methods=["get"], url_path="habilidades")
+    def habilidades(self, request, pk=None):
+        aluno = get_object_or_404(self.get_queryset(), pk=pk)
+        if not tem_consentimento_ativo(aluno):
+            return Response(
+                {"erro": "Aluno sem consentimento ativo para uso de IA (LGPD Art. 14)."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        dados = calcular_habilidades_aluno(aluno)
+        return Response(dados, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["get"], url_path="relatorios")
     def relatorios(self, request, pk=None):

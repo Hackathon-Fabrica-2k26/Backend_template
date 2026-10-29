@@ -1,5 +1,6 @@
 from .atividade import AtividadeSerializer
 from .envio_trabalhos import EnvioTrabalhosSerializer, EnvioTrabalhosUploadSerializer
+from .habilidade import HabilidadeAlunoSerializer, HabilidadeTurmaSerializer
 from .perfil_apoio import PerfilApoioSerializer
 from .relatorio import RelatorioSerializer
 from .trabalho import TrabalhoConfirmacaoSerializer, TrabalhoSerializer
@@ -14,6 +15,8 @@ __all__ = [
     "AtividadeVariacaoSerializer",
     "EnvioTrabalhosSerializer",
     "EnvioTrabalhosUploadSerializer",
+    "HabilidadeAlunoSerializer",
+    "HabilidadeTurmaSerializer",
     "MapaVariacaoAlunoSerializer",
     "MapaVariacaoItemSerializer",
     "PerfilApoioSerializer",
