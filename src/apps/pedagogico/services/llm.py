@@ -110,6 +110,20 @@ class LLMError(Exception):
         )
 
 
+class DocumentoRecusadoError(Exception):
+    """Lançada quando a IA detecta que o documento enviado não corresponde ao tipo esperado."""
+
+    def __init__(
+        self,
+        mensagem: str = "Documento recusado.",
+        tipo_documento: str = "outro",
+        motivo: str = "",
+    ):
+        super().__init__(mensagem)
+        self.tipo_documento = tipo_documento or "outro"
+        self.motivo = motivo or ""
+
+
 def gerar_relatorio(
     payload: dict,
     api_key: str,

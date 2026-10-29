@@ -10,7 +10,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.alunos.models import Aluno
-from apps.alunos.services import processar_laudo, tem_consentimento_ativo
+from apps.alunos.services import (
+    DocumentoRecusadoError,
+    NomeNaoConfereError,
+    processar_laudo,
+    tem_consentimento_ativo,
+)
 from apps.alunos.services.laudo import MIMES_LAUDO_PERMITIDOS, TAMANHO_MAXIMO_LAUDO_BYTES
 from apps.escolas.services.escola_usuario import config_ia_do_usuario
 from apps.pedagogico.serializers import PerfilApoioSerializer
@@ -29,6 +34,7 @@ class AlunoLaudoUploadSerializer(serializers.Serializer):
     """Valida o arquivo do laudo (PDF, JPG, PNG ou WEBP até 10 MB)."""
 
     arquivo = serializers.FileField(required=True)
+    confirmar_nome = serializers.BooleanField(required=False, default=False)
 
     def validate_arquivo(self, arquivo):
         if arquivo.size <= 0:
@@ -97,6 +103,8 @@ class AlunoLaudoView(APIView):
             400: OpenApiTypes.OBJECT,
             403: OpenApiTypes.OBJECT,
             404: OpenApiTypes.OBJECT,
+            409: OpenApiTypes.OBJECT,
+            422: OpenApiTypes.OBJECT,
             502: OpenApiTypes.OBJECT,
         },
         description=(
@@ -132,6 +140,11 @@ def processar_upload_laudo(request, aluno: Aluno, config) -> Response:
     entrada.is_valid(raise_exception=True)
 
     arquivo = entrada.validated_data["arquivo"]
+    confirmar_nome = bool(
+        entrada.validated_data.get("confirmar_nome")
+        or str(request.query_params.get("confirmar_nome", "")).lower() in ("true", "1")
+        or str(request.data.get("confirmar_nome", "")).lower() in ("true", "1")
+    )
     try:
         arquivo_bytes = arquivo.read()
     finally:
@@ -143,6 +156,24 @@ def processar_upload_laudo(request, aluno: Aluno, config) -> Response:
             arquivo_bytes=arquivo_bytes,
             mime=contexto["mime"],
             config=config,
+            confirmar_nome=confirmar_nome,
+        )
+    except DocumentoRecusadoError as erro:
+        return Response(
+            {
+                "erro": str(erro),
+                "tipo_documento": erro.tipo_documento,
+                "motivo": erro.motivo,
+            },
+            status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+    except NomeNaoConfereError as erro:
+        return Response(
+            {
+                "erro": str(erro),
+                "confirmacao_necessaria": True,
+            },
+            status=status.HTTP_409_CONFLICT,
         )
     except LLMError as erro:
         return Response({"erro": str(erro)}, status=status.HTTP_502_BAD_GATEWAY)

@@ -6,6 +6,7 @@ from .llm import (
     DISCLAIMER,
     MODELO_PADRAO,
     SYSTEM_PROMPT,
+    DocumentoRecusadoError,
     LLMError,
     extrair_atividade_multimodal,
     gerar_relatorio,
@@ -30,6 +31,7 @@ from .variacoes import (
 
 __all__ = [
     "DISCLAIMER",
+    "DocumentoRecusadoError",
     "ExtracaoError",
     "FORMATOS_ACEITOS",
     "LLMError",

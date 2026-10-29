@@ -186,6 +186,8 @@ class ResponsavelLaudoView(_ResponsavelBase):
             200: AlunoLaudoRespostaSerializer,
             400: OpenApiResponse(description="Arquivo inválido."),
             403: OpenApiResponse(description="Sem consentimento ativo."),
+            409: OpenApiResponse(description="Nome no laudo diferente do aluno; exige confirmação."),
+            422: OpenApiResponse(description="Documento recusado (fora de contexto)."),
             502: OpenApiResponse(description="Falha na IA."),
         },
     )

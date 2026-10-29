@@ -23,6 +23,7 @@ from apps.pedagogico.models import PerfilApoio
 from apps.pedagogico.serializers import PerfilApoioSerializer
 from apps.pedagogico.services.llm import (
     MAX_RESPOSTA_TOKENS,
+    DocumentoRecusadoError,
     LLMError,
     _extrair_json,
     normalizar_modelo,
@@ -44,21 +45,43 @@ MENSAGEM_ERRO_LAUDO = (
     "Não foi possível processar o documento enviado agora. Tente novamente em instantes."
 )
 
+
+class NomeNaoConfereError(Exception):
+    """Lançada quando o nome no laudo não confere com o do aluno e confirmação não foi dada."""
+
+    def __init__(self, mensagem: str, nome_no_documento: str):
+        super().__init__(mensagem)
+        self.nome_no_documento = nome_no_documento
+
+
 SISTEMA_PERFIL = (
-    "Você é um assistente pedagógico de apoio a professoras do ensino fundamental. "
-    "Nunca faça diagnóstico, nunca mencione condições de saúde, remédios, CID ou médicos. "
+    "Você é um assistente pedagógico de apoio a professoras do ensino fundamental.\n"
+    "Primeiro, verifique se o arquivo enviado é de fato um laudo ou relatório de saúde "
+    "ou de acompanhamento do estudante (laudo médico, psicológico, psicopedagógico, "
+    "neurológico, fonoaudiológico ou plano de AEE/Atendimento Educacional Especializado).\n"
+    "Se o documento NÃO for um laudo ou relatório de saúde/AEE (por exemplo: boletim de urna, "
+    "documento pessoal, comprovante, panfleto, notícia, atividade escolar, texto genérico, etc.), "
+    "defina `documento_valido` como false, identifique o `tipo_documento` e descreva brevemente o "
+    "`motivo` da recusa em português do Brasil.\n\n"
+    "Se for um laudo ou relatório de acompanhamento de saúde/AEE válido:\n"
+    "Defina `documento_valido` como true, `tipo_documento` como 'laudo', `motivo` como '', e extraia "
+    "APENAS necessidades pedagógicas e estratégias de apoio úteis para a sala de aula, em frases curtas e neutras.\n"
+    "Nunca faça diagnóstico, nunca mencione condições de saúde, remédios, CID ou médicos.\n"
     "Responda SOMENTE com JSON válido, em português do Brasil."
 )
 
 PROMPT_PERFIL = (
-    "O anexo (foto, imagem ou PDF) é um laudo. Extraia APENAS necessidades pedagógicas e "
-    "estratégias de apoio úteis para a sala de aula, em frases curtas e neutras. "
-    "NÃO escreva diagnóstico, sigla de condição, CID, remédio, nome de médico ou CRM, "
-    'e NÃO escreva o nome da criança em "necessidades", "estrategias" nem "observacoes". '
+    "Verifique se o anexo (foto, imagem ou PDF) é um laudo ou relatório de acompanhamento de saúde/AEE.\n"
+    "Se NÃO for, retorne:\n"
+    '{"documento_valido": false, "tipo_documento": "...", "motivo": "...", "nome_no_documento": "", '
+    '"necessidades": [], "estrategias": [], "observacoes": ""}\n\n'
+    "Se for válido, extraia APENAS necessidades pedagógicas e estratégias de apoio úteis para a sala de aula, "
+    "em frases curtas e neutras. NÃO escreva diagnóstico, sigla de condição, CID, remédio, nome de médico ou CRM, "
+    'e NÃO escreva o nome da criança em "necessidades", "estrategias" nem "observacoes".\n'
     'Devolva o nome que consta no documento só no campo "nome_no_documento" '
-    "(será usado apenas para conferência e descartado). "
-    'Formato: {"nome_no_documento": "...", "necessidades": ["..."], '
-    '"estrategias": ["..."], "observacoes": "..."}'
+    "(será usado apenas para conferência e descartado).\n"
+    'Formato:\n{"documento_valido": true, "tipo_documento": "laudo", "motivo": "", '
+    '"nome_no_documento": "...", "necessidades": ["..."], "estrategias": ["..."], "observacoes": "..."}'
 )
 
 DIAGNOSTICO = re.compile(
@@ -204,6 +227,7 @@ def processar_laudo(
     arquivo_bytes: bytes,
     mime: str,
     config,
+    confirmar_nome: bool = False,
 ) -> dict[str, Any]:
     """Processa o laudo em memória, atualiza o PerfilApoio ativo e descarta o arquivo.
 
@@ -255,8 +279,24 @@ def processar_laudo(
         logger.warning("Laudo: JSON do Gemini não é um objeto (modelo=%s)", modelo)
         raise LLMError(MENSAGEM_ERRO_LAUDO)
 
+    if dados.get("documento_valido") is False or str(dados.get("documento_valido", "")).lower() == "false":
+        tipo_doc = str(dados.get("tipo_documento") or "outro")
+        motivo = str(dados.get("motivo") or "O arquivo enviado não parece um laudo ou relatório de acompanhamento.")
+        raise DocumentoRecusadoError(
+            "Este arquivo não parece um laudo ou relatório de acompanhamento.",
+            tipo_documento=tipo_doc,
+            motivo=motivo,
+        )
+
     nome_no_documento = str(dados.get("nome_no_documento") or "").strip()
     nome_conferiu = _conferir_nome_documento(nome_no_documento, aluno.nome)
+
+    if not nome_conferiu and not confirmar_nome:
+        raise NomeNaoConfereError(
+            "O nome no documento não confere com o do aluno.",
+            nome_no_documento=nome_no_documento,
+        )
+
     nomes_proibidos = _tokens_nomes_proibidos(aluno.nome, nome_no_documento)
     # Descarta o nome lido do documento (nunca persiste nem retorna).
     del nome_no_documento
