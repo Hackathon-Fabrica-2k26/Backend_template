@@ -11,6 +11,10 @@ from .llm import (
     gerar_relatorio,
     sugerir_atividade,
 )
+from .pdf_atividade import (
+    gerar_pdf_atividade_completa,
+    gerar_pdf_variacao,
+)
 from .trabalhos import (
     FORMATOS_ACEITOS,
     TAMANHO_MAXIMO_BYTES,
@@ -44,13 +48,15 @@ __all__ = [
     "anonimizar",
     "casar_nome_aluno",
     "confirmar_trabalho",
+    "extrair_atividade_multimodal",
     "extrair_texto",
     "extrair_texto_docx",
+    "gerar_pdf_atividade_completa",
+    "gerar_pdf_variacao",
     "gerar_relatorio",
     "gerar_variacoes_atividade",
     "identificar_origem",
     "processar_envio_trabalhos",
     "sugerir_atividade",
     "validar_arquivos_envio",
-    "extrair_atividade_multimodal",
 ]

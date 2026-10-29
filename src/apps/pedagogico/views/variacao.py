@@ -17,6 +17,7 @@ from rest_framework.response import Response
 
 from apps.pedagogico.models import Atividade, AtividadeVariacao
 from apps.pedagogico.serializers import AtividadeVariacaoSerializer
+from apps.pedagogico.services.pdf_atividade import gerar_pdf_variacao
 
 
 class PDFRenderer(BaseRenderer):
@@ -82,35 +83,10 @@ class AtividadeVariacaoViewSet(viewsets.ModelViewSet):
         o título da atividade e o conteúdo (NUNCA nome de aluno ou condição).
         """
         variacao = self.get_object()
-
-        buffer = BytesIO()
-        documento = SimpleDocTemplate(
-            buffer,
-            pagesize=A4,
-            rightMargin=2 * cm,
-            leftMargin=2 * cm,
-            topMargin=2 * cm,
-            bottomMargin=2 * cm,
-            pageCompression=0,
-        )
-
-        estilos = getSampleStyleSheet()
-        conteudo = [
-            Paragraph(escape(variacao.rotulo), estilos["Heading2"]),
-            Paragraph(escape(variacao.atividade.titulo), estilos["Title"]),
-            Spacer(1, 0.5 * cm),
-        ]
-
-        for bloco in (variacao.conteudo or "").split("\n"):
-            texto_bloco = bloco.strip()
-            if texto_bloco:
-                conteudo.append(Paragraph(escape(texto_bloco), estilos["Normal"]))
-                conteudo.append(Spacer(1, 0.25 * cm))
-
-        documento.build(conteudo)
+        pdf_bytes = gerar_pdf_variacao(variacao)
 
         resposta = HttpResponse(
-            buffer.getvalue(),
+            pdf_bytes,
             content_type="application/pdf",
         )
         resposta["Content-Disposition"] = (
