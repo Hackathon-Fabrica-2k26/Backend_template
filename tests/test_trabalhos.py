@@ -544,3 +544,114 @@ def test_prompt_gemini_nao_recebe_nomes_dos_alunos():
     assert "Lucas Gabriel Silva" not in prompt_enviado
     assert "Mariana Costa" not in prompt_enviado
     assert "Nomes dos estudantes da turma" not in prompt_enviado
+
+
+@pytest.mark.django_db
+def test_envio_trabalhos_arquivo_fora_de_contexto_gera_status_erro_sem_relatorio(
+    cenario,
+    auth_client,
+):
+    auth_client.force_authenticate(user=cenario["professor"])
+    url = f"/api/atividades/{cenario['atividade'].id}/trabalhos/"
+
+    arq_invalido = SimpleUploadedFile(
+        "comprovante.png", criar_imagem("PNG"), content_type="image/png"
+    )
+    arq_valido = SimpleUploadedFile(
+        "trabalho.png", criar_imagem("PNG"), content_type="image/png"
+    )
+
+    def fake_analise(conteudo, mime_type, nome_arquivo, api_key, modelo="gemini-3.8-flash"):
+        if nome_arquivo == "comprovante.png":
+            return {
+                "documento_valido": False,
+                "tipo_documento": "comprovante bancário",
+                "motivo": "O documento enviado parece um comprovante bancário.",
+                "nome_lido": "",
+                "descricao": "O documento enviado parece um comprovante bancário.",
+                "analise_pedagogica": {},
+                "habilidades_demonstradas": [],
+                "habilidades_a_reforcar": [],
+            }
+        return {
+            "documento_valido": True,
+            "tipo_documento": "trabalho escolar",
+            "motivo": "",
+            "nome_lido": "Lucas Gabriel Silva",
+            "descricao": "Desenho com lápis de cor.",
+            "analise_pedagogica": {"pontos_fortes": ["Cores"]},
+            "habilidades_demonstradas": ["EF15AR04"],
+            "habilidades_a_reforcar": [],
+        }
+
+    with patch(
+        "apps.pedagogico.services.trabalhos.analisar_trabalho_com_gemini",
+        side_effect=fake_analise,
+    ):
+        resp = auth_client.post(
+            url,
+            {"arquivos": [arq_invalido, arq_valido]},
+            format="multipart",
+        )
+
+    assert resp.status_code == status.HTTP_201_CREATED
+    dados = resp.data
+    assert dados["total_arquivos"] == 2
+    assert len(dados["trabalhos"]) == 2
+
+    trabalho_invalido = next(t for t in dados["trabalhos"] if t["status"] == "erro")
+    assert trabalho_invalido["aluno"] is None
+    assert trabalho_invalido["identificacao"] == "sem_aluno"
+    assert "comprovante bancário" in trabalho_invalido["descricao_ia"]
+    msg_esperada = "Este arquivo não parece um trabalho escolar."
+    assert trabalho_invalido["dados_analise"]["erro"] == msg_esperada
+    assert trabalho_invalido["dados_analise"]["tipo_documento"] == "comprovante bancário"
+    assert trabalho_invalido["habilidades_demonstradas"] == []
+    assert trabalho_invalido["habilidades_a_reforcar"] == []
+
+    # Trabalho com status ERRO não pode ser confirmado via PATCH (deve retornar 400)
+    url_confirmar = f"/api/trabalhos/{trabalho_invalido['id']}/"
+    resp_confirmar = auth_client.patch(
+        url_confirmar,
+        {"aluno": cenario["aluno2"].id},
+        format="json",
+    )
+    assert resp_confirmar.status_code == status.HTTP_400_BAD_REQUEST
+
+    trabalho_valido = next(t for t in dados["trabalhos"] if t["status"] == "analisado")
+    assert trabalho_valido["aluno"] == cenario["aluno1"].id
+    assert trabalho_valido["identificacao"] == "confirmada"
+    assert trabalho_valido["habilidades_demonstradas"] == ["EF15AR04"]
+
+    relatorios = Relatorio.objects.filter(tipo="atividade")
+    assert relatorios.count() == 1
+    assert relatorios.first().aluno == cenario["aluno1"]
+
+
+@pytest.mark.django_db
+def test_analisar_trabalho_gemini_recusa_documento_invalido():
+    from apps.pedagogico.services.trabalhos import analisar_trabalho_com_gemini
+
+    resposta_gemini = json.dumps(
+        {
+            "documento_valido": False,
+            "tipo_documento": "panfleto",
+            "motivo": "O arquivo é um panfleto comercial de mercado.",
+        }
+    )
+
+    with patch("google.genai.Client") as mock_client:
+        mock_client.return_value.models.generate_content.return_value.text = resposta_gemini
+        resultado = analisar_trabalho_com_gemini(
+            conteudo=b"bytes-falsos",
+            mime_type="image/png",
+            nome_arquivo="panfleto.png",
+            api_key="chave",
+        )
+
+    assert resultado["documento_valido"] is False
+    assert resultado["tipo_documento"] == "panfleto"
+    assert "panfleto comercial" in resultado["motivo"]
+    assert resultado["habilidades_demonstradas"] == []
+    assert resultado["habilidades_a_reforcar"] == []
+
