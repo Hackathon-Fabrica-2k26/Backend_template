@@ -1,3 +1,5 @@
+from django.http import HttpResponse
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
     OpenApiResponse,
@@ -26,6 +28,8 @@ from apps.pedagogico.services import (
     processar_envio_trabalhos,
 )
 from apps.pedagogico.services.habilidades import NOMES_HABILIDADES
+from apps.pedagogico.services.pdf_atividade import gerar_pdf_atividade_completa
+from apps.pedagogico.views.variacao import PDFRenderer
 
 
 @extend_schema_view(
@@ -194,3 +198,41 @@ class AtividadeViewSet(viewsets.ModelViewSet):
 
         serializer = EnvioTrabalhosSerializer(envio)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        summary="Baixar PDF da atividade para impressão",
+        description=(
+            "Gera PDF estilizado pronto para impressão. "
+            "Se 'todas=true', inclui todas as variações da atividade em lote multipágina. "
+            "Caso contrário, inclui a versão geral."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="todas",
+                type=bool,
+                location=OpenApiParameter.QUERY,
+                description="Incluir todas as variações em lote separadas por página.",
+            ),
+        ],
+        responses={(200, "application/pdf"): OpenApiTypes.BINARY},
+    )
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="pdf",
+        renderer_classes=[PDFRenderer],
+    )
+    def pdf(self, request: Request, pk=None) -> HttpResponse:
+        atividade = self.get_object()
+        todas = str(request.query_params.get("todas", "")).lower() in ("1", "true", "t", "sim")
+        pdf_bytes = gerar_pdf_atividade_completa(atividade, incluir_todas_variacoes=todas)
+
+        resposta = HttpResponse(
+            pdf_bytes,
+            content_type="application/pdf",
+        )
+        sufixo = "-lote" if todas else ""
+        resposta["Content-Disposition"] = (
+            f'attachment; filename="atividade-{atividade.id}{sufixo}.pdf"'
+        )
+        return resposta

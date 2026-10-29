@@ -1,15 +1,8 @@
-from io import BytesIO
-from xml.sax.saxutils import escape
-
 from django.db.models import QuerySet
 from django.http import HttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.renderers import BaseRenderer
@@ -17,6 +10,7 @@ from rest_framework.response import Response
 
 from apps.pedagogico.models import Atividade, AtividadeVariacao
 from apps.pedagogico.serializers import AtividadeVariacaoSerializer
+from apps.pedagogico.services.pdf_atividade import gerar_pdf_variacao
 
 
 class PDFRenderer(BaseRenderer):
@@ -59,9 +53,12 @@ class AtividadeVariacaoViewSet(viewsets.ModelViewSet):
         variacoes_ativas = atividade.variacoes.exclude(
             status=AtividadeVariacao.StatusChoices.DESCARTADA
         )
-        if variacoes_ativas.exists() and not variacoes_ativas.exclude(
-            status=AtividadeVariacao.StatusChoices.APROVADA
-        ).exists():
+        if (
+            variacoes_ativas.exists()
+            and not variacoes_ativas.exclude(
+                status=AtividadeVariacao.StatusChoices.APROVADA
+            ).exists()
+        ):
             atividade.status = Atividade.StatusChoices.APROVADA
             atividade.save(update_fields=["status", "updated_at"])
 
@@ -82,35 +79,10 @@ class AtividadeVariacaoViewSet(viewsets.ModelViewSet):
         o título da atividade e o conteúdo (NUNCA nome de aluno ou condição).
         """
         variacao = self.get_object()
-
-        buffer = BytesIO()
-        documento = SimpleDocTemplate(
-            buffer,
-            pagesize=A4,
-            rightMargin=2 * cm,
-            leftMargin=2 * cm,
-            topMargin=2 * cm,
-            bottomMargin=2 * cm,
-            pageCompression=0,
-        )
-
-        estilos = getSampleStyleSheet()
-        conteudo = [
-            Paragraph(escape(variacao.rotulo), estilos["Heading2"]),
-            Paragraph(escape(variacao.atividade.titulo), estilos["Title"]),
-            Spacer(1, 0.5 * cm),
-        ]
-
-        for bloco in (variacao.conteudo or "").split("\n"):
-            texto_bloco = bloco.strip()
-            if texto_bloco:
-                conteudo.append(Paragraph(escape(texto_bloco), estilos["Normal"]))
-                conteudo.append(Spacer(1, 0.25 * cm))
-
-        documento.build(conteudo)
+        pdf_bytes = gerar_pdf_variacao(variacao)
 
         resposta = HttpResponse(
-            buffer.getvalue(),
+            pdf_bytes,
             content_type="application/pdf",
         )
         resposta["Content-Disposition"] = (
