@@ -196,7 +196,9 @@ def test_laudo_remove_itens_com_cid_diagnostico_remedio_medico_e_nome(
     assert "ribeiro" not in texto_total.lower()
 
 
-def test_laudo_nome_conferiu_false_exige_confirmacao_e_salva_ao_confirmar(auth_client, user, monkeypatch):
+def test_laudo_nome_conferiu_false_exige_confirmacao_e_salva_ao_confirmar(
+    auth_client, user, monkeypatch
+):
     _, _, aluno = _criar_cenario_laudo(user, nome_aluno="Lucas Oliveira")
 
     def fake_pedir_laudo(arquivo_bytes, mime, api_key, modelo):

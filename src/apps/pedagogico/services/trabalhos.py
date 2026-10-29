@@ -127,12 +127,13 @@ def analisar_trabalho_com_gemini(
         "Você é um assistente pedagógico de uma professora do 1º ano do Ensino Fundamental.\n"
         "Primeiro, verifique se o arquivo enviado é de fato um trabalho escolar, lição, "
         "exercício ou produção de estudante.\n"
-        "Se o arquivo NÃO for um trabalho escolar (por exemplo: documento oficial, boletim de urna, "
-        "comprovante, receita médica, panfleto, notícia, meme, etc.), defina 'documento_valido' como false, "
-        "identifique o 'tipo_documento' e descreva um 'motivo' curto da recusa em português do Brasil.\n\n"
+        "Se o arquivo NÃO for um trabalho escolar (por exemplo: documento oficial, "
+        "boletim de urna, comprovante, receita médica, panfleto, notícia, meme, etc.), defina "
+        "'documento_valido' como false, identifique o 'tipo_documento' e descreva um 'motivo' "
+        "curto da recusa em português do Brasil.\n\n"
         "Se for um trabalho escolar válido:\n"
-        "Defina 'documento_valido' como true, 'tipo_documento' como 'trabalho escolar', 'motivo' como '', "
-        "e extraia:\n"
+        "Defina 'documento_valido' como true, 'tipo_documento' como 'trabalho escolar', "
+        "'motivo' como '', e extraia:\n"
         "1. 'nome_lido': o nome do estudante escrito no trabalho ('' se não houver).\n"
         "2. 'descricao': o que a atividade pede e o que o estudante fez, em poucas frases.\n"
         "3. 'habilidades_demonstradas': códigos da lista abaixo que o estudante mostrou "
@@ -203,7 +204,8 @@ def analisar_trabalho_com_gemini(
     if not isinstance(dados, dict):
         raise LLMError("Resposta da IA deve ser um objeto JSON.")
 
-    if dados.get("documento_valido") is False or str(dados.get("documento_valido", "")).lower() == "false":
+    doc_valido = dados.get("documento_valido")
+    if doc_valido is False or str(doc_valido or "").lower() == "false":
         tipo_doc = str(dados.get("tipo_documento") or "outro")
         motivo = str(dados.get("motivo") or "Este arquivo não parece um trabalho escolar.")
         return {
@@ -353,7 +355,8 @@ def processar_envio_trabalhos(
             # Descarte explícito da referência de bytes após análise (LGPD)
             del conteudo_bytes
 
-        if resultado_ia.get("documento_valido") is False or str(resultado_ia.get("documento_valido", "")).lower() == "false":
+        doc_valido = resultado_ia.get("documento_valido")
+        if doc_valido is False or str(doc_valido or "").lower() == "false":
             motivo = resultado_ia.get("motivo") or "Este arquivo não parece um trabalho escolar."
             tipo_doc = resultado_ia.get("tipo_documento") or "outro"
             Trabalho.objects.create(
@@ -424,6 +427,9 @@ def confirmar_trabalho(
     usuario=None,
 ) -> Trabalho:
     """Confirma manualmente o aluno de um trabalho e gera o relatório se ainda não existir."""
+    if trabalho.status == Trabalho.StatusChoices.ERRO:
+        raise ValueError("Trabalhos com status de erro não podem ser confirmados.")
+
     trabalho.aluno = aluno
     trabalho.identificacao = Trabalho.IdentificacaoChoices.CONFIRMADA
     trabalho.confianca_nome = 1.0

@@ -554,8 +554,12 @@ def test_envio_trabalhos_arquivo_fora_de_contexto_gera_status_erro_sem_relatorio
     auth_client.force_authenticate(user=cenario["professor"])
     url = f"/api/atividades/{cenario['atividade'].id}/trabalhos/"
 
-    arq_invalido = SimpleUploadedFile("comprovante.png", criar_imagem("PNG"), content_type="image/png")
-    arq_valido = SimpleUploadedFile("trabalho.png", criar_imagem("PNG"), content_type="image/png")
+    arq_invalido = SimpleUploadedFile(
+        "comprovante.png", criar_imagem("PNG"), content_type="image/png"
+    )
+    arq_valido = SimpleUploadedFile(
+        "trabalho.png", criar_imagem("PNG"), content_type="image/png"
+    )
 
     def fake_analise(conteudo, mime_type, nome_arquivo, api_key, modelo="gemini-3.8-flash"):
         if nome_arquivo == "comprovante.png":
@@ -599,10 +603,20 @@ def test_envio_trabalhos_arquivo_fora_de_contexto_gera_status_erro_sem_relatorio
     assert trabalho_invalido["aluno"] is None
     assert trabalho_invalido["identificacao"] == "sem_aluno"
     assert "comprovante bancário" in trabalho_invalido["descricao_ia"]
-    assert trabalho_invalido["dados_analise"]["erro"] == "Este arquivo não parece um trabalho escolar."
+    msg_esperada = "Este arquivo não parece um trabalho escolar."
+    assert trabalho_invalido["dados_analise"]["erro"] == msg_esperada
     assert trabalho_invalido["dados_analise"]["tipo_documento"] == "comprovante bancário"
     assert trabalho_invalido["habilidades_demonstradas"] == []
     assert trabalho_invalido["habilidades_a_reforcar"] == []
+
+    # Trabalho com status ERRO não pode ser confirmado via PATCH (deve retornar 400)
+    url_confirmar = f"/api/trabalhos/{trabalho_invalido['id']}/"
+    resp_confirmar = auth_client.patch(
+        url_confirmar,
+        {"aluno": cenario["aluno2"].id},
+        format="json",
+    )
+    assert resp_confirmar.status_code == status.HTTP_400_BAD_REQUEST
 
     trabalho_valido = next(t for t in dados["trabalhos"] if t["status"] == "analisado")
     assert trabalho_valido["aluno"] == cenario["aluno1"].id

@@ -61,27 +61,31 @@ SISTEMA_PERFIL = (
     "neurológico, fonoaudiológico ou plano de AEE/Atendimento Educacional Especializado).\n"
     "Se o documento NÃO for um laudo ou relatório de saúde/AEE (por exemplo: boletim de urna, "
     "documento pessoal, comprovante, panfleto, notícia, atividade escolar, texto genérico, etc.), "
-    "defina `documento_valido` como false, identifique o `tipo_documento` e descreva brevemente o "
-    "`motivo` da recusa em português do Brasil.\n\n"
+    "defina `documento_valido` como false, identifique o `tipo_documento` e descreva "
+    "brevemente o `motivo` da recusa em português do Brasil.\n\n"
     "Se for um laudo ou relatório de acompanhamento de saúde/AEE válido:\n"
-    "Defina `documento_valido` como true, `tipo_documento` como 'laudo', `motivo` como '', e extraia "
-    "APENAS necessidades pedagógicas e estratégias de apoio úteis para a sala de aula, em frases curtas e neutras.\n"
+    "Defina `documento_valido` como true, `tipo_documento` como 'laudo', `motivo` como '', e "
+    "extraia APENAS necessidades pedagógicas e estratégias de apoio úteis para a sala de aula, "
+    "em frases curtas e neutras.\n"
     "Nunca faça diagnóstico, nunca mencione condições de saúde, remédios, CID ou médicos.\n"
     "Responda SOMENTE com JSON válido, em português do Brasil."
 )
 
 PROMPT_PERFIL = (
-    "Verifique se o anexo (foto, imagem ou PDF) é um laudo ou relatório de acompanhamento de saúde/AEE.\n"
+    "Verifique se o anexo (foto, imagem ou PDF) é um laudo ou relatório de "
+    "acompanhamento de saúde/AEE.\n"
     "Se NÃO for, retorne:\n"
-    '{"documento_valido": false, "tipo_documento": "...", "motivo": "...", "nome_no_documento": "", '
-    '"necessidades": [], "estrategias": [], "observacoes": ""}\n\n'
-    "Se for válido, extraia APENAS necessidades pedagógicas e estratégias de apoio úteis para a sala de aula, "
-    "em frases curtas e neutras. NÃO escreva diagnóstico, sigla de condição, CID, remédio, nome de médico ou CRM, "
-    'e NÃO escreva o nome da criança em "necessidades", "estrategias" nem "observacoes".\n'
+    '{"documento_valido": false, "tipo_documento": "...", "motivo": "...", '
+    '"nome_no_documento": "", "necessidades": [], "estrategias": [], "observacoes": ""}\n\n'
+    "Se for válido, extraia APENAS necessidades pedagógicas e estratégias de apoio úteis "
+    "para a sala de aula, em frases curtas e neutras. NÃO escreva diagnóstico, sigla de condição, "
+    "CID, remédio, nome de médico ou CRM, e NÃO escreva o nome da criança em \"necessidades\", "
+    '"estrategias" nem "observacoes".\n'
     'Devolva o nome que consta no documento só no campo "nome_no_documento" '
     "(será usado apenas para conferência e descartado).\n"
     'Formato:\n{"documento_valido": true, "tipo_documento": "laudo", "motivo": "", '
-    '"nome_no_documento": "...", "necessidades": ["..."], "estrategias": ["..."], "observacoes": "..."}'
+    '"nome_no_documento": "...", "necessidades": ["..."], "estrategias": ["..."], '
+    '"observacoes": "..."}'
 )
 
 DIAGNOSTICO = re.compile(
@@ -279,9 +283,11 @@ def processar_laudo(
         logger.warning("Laudo: JSON do Gemini não é um objeto (modelo=%s)", modelo)
         raise LLMError(MENSAGEM_ERRO_LAUDO)
 
-    if dados.get("documento_valido") is False or str(dados.get("documento_valido", "")).lower() == "false":
+    doc_valido = dados.get("documento_valido")
+    if doc_valido is False or str(doc_valido or "").lower() == "false":
         tipo_doc = str(dados.get("tipo_documento") or "outro")
-        motivo = str(dados.get("motivo") or "O arquivo enviado não parece um laudo ou relatório de acompanhamento.")
+        motivo_padrao = "O arquivo enviado não parece um laudo ou relatório de acompanhamento."
+        motivo = str(dados.get("motivo") or motivo_padrao)
         raise DocumentoRecusadoError(
             "Este arquivo não parece um laudo ou relatório de acompanhamento.",
             tipo_documento=tipo_doc,
