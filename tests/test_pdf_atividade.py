@@ -1,10 +1,11 @@
 import io
+
 import pytest
 from django.urls import reverse
 from pypdf import PdfReader
 from rest_framework import status
 
-from apps.pedagogico.models import Atividade, AtividadeVariacao
+from apps.pedagogico.models import AtividadeVariacao
 from tests.factories import AtividadeFactory, TurmaFactory, UserFactory
 
 
@@ -23,7 +24,9 @@ def test_pdf_variacao_estilizada_contem_cabecalho_escolar_e_campos_aluno(auth_cl
         numero=1,
         rotulo="prova_v1",
         eh_geral=True,
-        conteudo="1. Leia as palavras abaixo e circule os encontros vocálicos:\npeixe, flauta, noite.",
+        conteudo=(
+            "1. Leia as palavras abaixo e circule os encontros vocálicos:\npeixe, flauta, noite."
+        ),
     )
     auth_client.force_authenticate(user=professor)
 
@@ -95,12 +98,13 @@ def test_pdf_atividade_endpoint_individual_e_em_lote(auth_client):
         titulo="Matemática Divertida",
         texto_original="1. Resolva as somas simples.",
     )
-    # Cria 2 variações adaptadas
+    # Cria 2 variações aprovadas e 1 rascunho
     AtividadeVariacao.objects.create(
         atividade=atividade,
         numero=1,
         rotulo="prova_v1",
         eh_geral=True,
+        status="aprovada",
         conteudo="Versão geral: resolva 2 + 2.",
     )
     AtividadeVariacao.objects.create(
@@ -108,7 +112,16 @@ def test_pdf_atividade_endpoint_individual_e_em_lote(auth_client):
         numero=2,
         rotulo="prova_v2",
         eh_geral=False,
+        status="aprovada",
         conteudo="Versão com apoio visual: conte os dedos 2 + 2.",
+    )
+    AtividadeVariacao.objects.create(
+        atividade=atividade,
+        numero=3,
+        rotulo="prova_v3_rascunho",
+        eh_geral=False,
+        status="rascunho",
+        conteudo="Versão rascunho que não deve sair na impressão em lote.",
     )
     auth_client.force_authenticate(user=professor)
 
@@ -122,7 +135,7 @@ def test_pdf_atividade_endpoint_individual_e_em_lote(auth_client):
     texto_ind = "\n".join(pagina.extract_text() or "" for pagina in leitor_ind.pages)
     assert "Versão geral" in texto_ind
 
-    # Teste de lote (todas as variações juntas)
+    # Teste de lote (apenas variações aprovadas)
     url_lote = f"{url_individual}?todas=true"
     resp_lote = auth_client.get(url_lote)
     assert resp_lote.status_code == status.HTTP_200_OK
@@ -133,6 +146,8 @@ def test_pdf_atividade_endpoint_individual_e_em_lote(auth_client):
     assert "prova_v1" in texto_lote
     assert "prova_v2" in texto_lote
     assert "Versão com apoio visual" in texto_lote
+    assert "prova_v3_rascunho" not in texto_lote
+    assert "Versão rascunho" not in texto_lote
 
 
 @pytest.mark.django_db

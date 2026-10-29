@@ -1,15 +1,8 @@
-from io import BytesIO
-from xml.sax.saxutils import escape
-
 from django.db.models import QuerySet
 from django.http import HttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.renderers import BaseRenderer
@@ -60,9 +53,12 @@ class AtividadeVariacaoViewSet(viewsets.ModelViewSet):
         variacoes_ativas = atividade.variacoes.exclude(
             status=AtividadeVariacao.StatusChoices.DESCARTADA
         )
-        if variacoes_ativas.exists() and not variacoes_ativas.exclude(
-            status=AtividadeVariacao.StatusChoices.APROVADA
-        ).exists():
+        if (
+            variacoes_ativas.exists()
+            and not variacoes_ativas.exclude(
+                status=AtividadeVariacao.StatusChoices.APROVADA
+            ).exists()
+        ):
             atividade.status = Atividade.StatusChoices.APROVADA
             atividade.save(update_fields=["status", "updated_at"])
 

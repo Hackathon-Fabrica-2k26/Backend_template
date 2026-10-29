@@ -3,15 +3,17 @@
 Diretrizes e Regras:
 - Layout educacional limpo, atraente e adequado para crianças dos anos iniciais (1º ano EF).
 - Cabeçalho escolar com campos de preenchimento (Estudante, Data, Turma).
-- Identificação neutra da versão da atividade (ex.: prova_v1, prova_v2) para evitar estigmatização (Inclusão).
+- Identificação neutra da versão da atividade (ex.: prova_v1, prova_v2) para evitar
+  estigmatização (Inclusão).
 - LGPD: NUNCA inclui nomes de alunos em variações, diagnósticos, laudos, CIDs ou menções clínicas.
-- Identificação automática de questões, alternativas, áreas de desenho e linhas pautadas para resposta.
+- Identificação automática de questões, alternativas, áreas de desenho e linhas pautadas
+  para resposta.
 - Numeração dinâmica de páginas (Página X de Y) via NumberedCanvas.
 """
 
-from io import BytesIO
 import os
 import re
+from io import BytesIO
 from typing import Any
 from xml.sax.saxutils import escape
 
@@ -205,7 +207,6 @@ def _criar_cabecalho_escolar(
     estilos: dict[str, ParagraphStyle],
 ) -> Table:
     """Monta o cabeçalho padronizado da atividade com campos de preenchimento para o aluno."""
-    largura_total = 18.0 * cm
     caminho_logo = _obter_caminho_logo()
 
     # Coluna 1: Informações da Escola e Aluno (largura 13.5 cm)
@@ -217,10 +218,11 @@ def _criar_cabecalho_escolar(
         "<b>Estudante:</b> ____________________________________________________________________",
         estilos["CabecalhoTexto"],
     )
-    texto_linha_meta = Paragraph(
-        f"<b>Data:</b> _____/_____/_________ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>{escape(turma_exibicao)}</b>",
-        estilos["CabecalhoTexto"],
+    texto_meta = (
+        f"<b>Data:</b> _____/_____/_________ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "
+        f"<b>{escape(turma_exibicao)}</b>"
     )
+    texto_linha_meta = Paragraph(texto_meta, estilos["CabecalhoTexto"])
 
     bloco_esquerdo = [
         texto_escola,
@@ -323,9 +325,7 @@ PADRAO_QUESTAO = re.compile(
     r"^(?:Quest[aã]o\s*)?(\d+)[.)\-\s](.*)$",
     re.IGNORECASE,
 )
-PADRAO_ALTERNATIVA = re.compile(
-    r"^([a-eA-E][.)\-]|\([a-eA-E\s]*\)|\b[a-eA-E]\))\s*(.*)$"
-)
+PADRAO_ALTERNATIVA = re.compile(r"^([a-eA-E][.)\-]|\([a-eA-E\s]*\)|\b[a-eA-E]\))\s*(.*)$")
 PADRAO_DESENHO = re.compile(
     r"\b(desenhe|fa[çc]a um desenho|ilustre|pinte|cole|represente com desenho)\b",
     re.IGNORECASE,
@@ -353,7 +353,10 @@ def _processar_conteudo_atividade(
         if match_questao:
             numero = match_questao.group(1)
             enunciado = match_questao.group(2).strip()
-            texto_formatado = f"<b>{numero}.</b> {escape(enunciado)}" if enunciado else f"<b>{numero}.</b>"
+            if enunciado:
+                texto_formatado = f"<b>{numero}.</b> {escape(enunciado)}"
+            else:
+                texto_formatado = f"<b>{numero}.</b>"
 
             bloco_questao: list[Any] = [
                 Paragraph(texto_formatado, estilos["Questao"]),
@@ -366,8 +369,8 @@ def _processar_conteudo_atividade(
                 bloco_questao.append(Spacer(1, 0.3 * cm))
             elif PADRAO_ESCRITA.search(linha):
                 # Olha se a próxima linha é alternativa antes de pôr linhas pautadas
-                proxima_e_alternativa = (
-                    i + 1 < len(linhas) and PADRAO_ALTERNATIVA.match(linhas[i + 1])
+                proxima_e_alternativa = i + 1 < len(linhas) and PADRAO_ALTERNATIVA.match(
+                    linhas[i + 1]
                 )
                 if not proxima_e_alternativa:
                     bloco_questao.append(Spacer(1, 0.2 * cm))
@@ -454,8 +457,9 @@ def gerar_pdf_variacao(variacao: Any) -> bytes:
 
     # 3. Objetivo pedagógico (se houver)
     if atividade.objetivo and atividade.objetivo.strip():
+        texto_obj = f"<b>Objetivo:</b> {escape(atividade.objetivo.strip())}"
         caixa_objetivo = Table(
-            [[Paragraph(f"<b>Objetivo:</b> {escape(atividade.objetivo.strip())}", estilos["ObjetivoTexto"])]],
+            [[Paragraph(texto_obj, estilos["ObjetivoTexto"])]],
             colWidths=[18.0 * cm],
         )
         caixa_objetivo.setStyle(
@@ -508,9 +512,10 @@ def gerar_pdf_atividade_completa(
     escola_nome = getattr(escola, "nome", "") if escola else ""
     turma_nome = getattr(turma, "nome", "") if turma else ""
 
-    variacoes = list(
-        atividade.variacoes.exclude(status="descartada").order_by("numero")
-    )
+    if incluir_todas_variacoes:
+        variacoes = list(atividade.variacoes.filter(status="aprovada").order_by("numero"))
+    else:
+        variacoes = list(atividade.variacoes.exclude(status="descartada").order_by("numero"))
 
     conteudo_fluxo: list[Any] = []
 
@@ -571,8 +576,9 @@ def gerar_pdf_atividade_completa(
         )
 
         if atividade.objetivo and atividade.objetivo.strip():
+            texto_obj_geral = f"<b>Objetivo:</b> {escape(atividade.objetivo.strip())}"
             caixa_objetivo = Table(
-                [[Paragraph(f"<b>Objetivo:</b> {escape(atividade.objetivo.strip())}", estilos["ObjetivoTexto"])]],
+                [[Paragraph(texto_obj_geral, estilos["ObjetivoTexto"])]],
                 colWidths=[18.0 * cm],
             )
             caixa_objetivo.setStyle(
