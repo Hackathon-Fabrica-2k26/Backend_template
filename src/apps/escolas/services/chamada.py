@@ -9,6 +9,7 @@ import re
 
 from apps.pedagogico.services.llm import (
     MAX_RESPOSTA_TOKENS,
+    DocumentoRecusadoError,
     LLMError,
     _extrair_json,
     normalizar_modelo,
@@ -21,8 +22,16 @@ MENSAGEM_ERRO_PADRAO = (
 )
 
 SYSTEM_PROMPT_CHAMADA = (
-    "Você é um assistente de OCR escolar. Analise a imagem ou documento PDF de "
-    "uma lista de chamada e extraia APENAS a coluna de nomes completos dos estudantes.\n"
+    "Você é um assistente escolar especializado em análise de documentos e OCR.\n"
+    "Primeiro, verifique se o arquivo enviado é de fato uma lista de chamada escolar "
+    "(ou diário de classe, lista de presença de alunos, lista de matrícula de turma).\n"
+    "Se o documento NÃO for uma lista de chamada (por exemplo: boletim de urna, documento oficial, "
+    "notícia, laudo médico, documento pessoal, panfleto, cardápio, etc.), defina `documento_valido` como false, "
+    "identifique o `tipo_documento` e descreva brevemente o `motivo` da recusa em português, "
+    "devolvendo a lista `nomes` vazia.\n\n"
+    "Se for uma lista de chamada escolar válida:\n"
+    "Defina `documento_valido` como true, `tipo_documento` como 'lista de chamada', `motivo` como '', "
+    "e extraia APENAS a coluna de nomes completos dos estudantes.\n"
     "Regras obrigatórias:\n"
     "- Foque exclusivamente na coluna de nomes dos alunos.\n"
     "- Ignore completamente datas de nascimento, observações (médicas ou pedagógicas), "
@@ -32,16 +41,22 @@ SYSTEM_PROMPT_CHAMADA = (
     "- Não inclua nomes duplicados.\n"
     "- Não invente nomes que não estejam no documento.\n"
     "- Para cada nome, informe o índice de confiança de legibilidade (`confianca`) "
-    "entre 0.0 (muito ilegível/duvidoso) e 1.0 (totalmente nítido).\n"
+    "entre 0.0 (muito ilegível/duvidoso) e 1.0 (totalmente nítido).\n\n"
     "- Responda APENAS com um JSON válido no formato:\n"
-    '  {"nomes": [{"nome": "Nome Completo 1", "confianca": 0.95}, ...]}'
+    "{\n"
+    '  "documento_valido": true,\n'
+    '  "tipo_documento": "lista de chamada",\n'
+    '  "motivo": "",\n'
+    '  "nomes": [{"nome": "Nome Completo 1", "confianca": 0.95}, ...]\n'
+    "}"
 )
 
 PROMPT_USUARIO_CHAMADA = (
-    "Extraia somente a coluna de nomes completos dos alunos desta lista de chamada "
-    "(ignorando datas de nascimento, observações e demais colunas) e devolva "
-    "exclusivamente um JSON no formato "
-    '{"nomes": [{"nome": "...", "confianca": 0.95}]}.'
+    "Verifique se este arquivo é uma lista de chamada escolar. Se não for, retorne "
+    '{"documento_valido": false, "tipo_documento": "...", "motivo": "...", "nomes": []}. '
+    "Se for válido, extraia somente a coluna de nomes completos dos alunos e devolva "
+    '{"documento_valido": true, "tipo_documento": "lista de chamada", "motivo": "", '
+    '"nomes": [{"nome": "...", "confianca": 0.95}]}.'
 )
 
 _PREFIXO_NUMERO_RE = re.compile(r"^\s*\d+\s*[\.\)\-–—:ºª]*\s*")
@@ -88,11 +103,43 @@ def reconhecer_nomes(
         )
         raise LLMError(MENSAGEM_ERRO_PADRAO) from erro
 
-    if not isinstance(dados, dict) or not isinstance(dados.get("nomes"), list):
+    if not isinstance(dados, dict):
+        logger.warning("Chamada: JSON do Gemini não é um dicionário (modelo=%s)", modelo)
+        raise LLMError(MENSAGEM_ERRO_PADRAO)
+
+    if dados.get("documento_valido") is False or str(dados.get("documento_valido", "")).lower() == "false":
+        tipo_doc = str(dados.get("tipo_documento") or "outro")
+        motivo = str(dados.get("motivo") or "O arquivo enviado não parece uma lista de chamada.")
+        raise DocumentoRecusadoError(
+            "Este arquivo não parece uma lista de chamada.",
+            tipo_documento=tipo_doc,
+            motivo=motivo,
+        )
+
+    if not isinstance(dados.get("nomes"), list):
         logger.warning("Chamada: JSON do Gemini sem a lista 'nomes' (modelo=%s)", modelo)
         raise LLMError(MENSAGEM_ERRO_PADRAO)
 
-    return _limpar_nomes(dados["nomes"])
+    nomes = _limpar_nomes(dados["nomes"])
+
+    # Defesa extra na chamada: lista sem nenhum nome com confianca >= 0.5 -> recusar
+    nomes_confiaveis = [
+        item for item in nomes
+        if float(item.get("confianca", 0.0)) >= 0.5
+    ]
+    if not nomes_confiaveis:
+        tipo_doc = str(dados.get("tipo_documento") or "outro")
+        motivo = str(
+            dados.get("motivo")
+            or "Nenhum nome de aluno legível com confiança mínima foi identificado no documento."
+        )
+        raise DocumentoRecusadoError(
+            "Este arquivo não parece uma lista de chamada.",
+            tipo_documento=tipo_doc,
+            motivo=motivo,
+        )
+
+    return nomes
 
 
 def _pedir_ocr_ao_gemini(imagem_bytes: bytes, mime: str, api_key: str, modelo: str) -> str:
