@@ -9,7 +9,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.escolas.services import LLMError, reconhecer_nomes
+from apps.escolas.services import DocumentoRecusadoError, LLMError, reconhecer_nomes
 from apps.escolas.services.escola_usuario import config_ia_do_usuario
 
 TAMANHO_MAXIMO_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -82,6 +82,7 @@ class ChamadaReconhecerView(APIView):
         responses={
             200: ChamadaReconhecerRespostaSerializer,
             400: OpenApiTypes.OBJECT,
+            422: OpenApiTypes.OBJECT,
             502: OpenApiTypes.OBJECT,
         },
     )
@@ -97,6 +98,15 @@ class ChamadaReconhecerView(APIView):
         config = config_ia_do_usuario(request.user)
         try:
             nomes = reconhecer_nomes(imagem_bytes, mime, config)
+        except DocumentoRecusadoError as erro:
+            return Response(
+                {
+                    "erro": str(erro),
+                    "tipo_documento": erro.tipo_documento,
+                    "motivo": erro.motivo,
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
         except LLMError as erro:
             return Response({"erro": str(erro)}, status=status.HTTP_502_BAD_GATEWAY)
 

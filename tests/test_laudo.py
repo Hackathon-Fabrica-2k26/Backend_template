@@ -196,16 +196,71 @@ def test_laudo_remove_itens_com_cid_diagnostico_remedio_medico_e_nome(
     assert "ribeiro" not in texto_total.lower()
 
 
-def test_laudo_nome_conferiu_false_quando_documento_tem_outro_nome(auth_client, user, monkeypatch):
+def test_laudo_nome_conferiu_false_exige_confirmacao_e_salva_ao_confirmar(
+    auth_client, user, monkeypatch
+):
     _, _, aluno = _criar_cenario_laudo(user, nome_aluno="Lucas Oliveira")
 
     def fake_pedir_laudo(arquivo_bytes, mime, api_key, modelo):
         return json.dumps(
             {
+                "documento_valido": True,
                 "nome_no_documento": "Mateus Souza",
                 "necessidades": ["tempo extra"],
                 "estrategias": ["enunciados objetivos"],
                 "observacoes": "",
+            },
+            ensure_ascii=False,
+        )
+
+    monkeypatch.setattr(
+        "apps.alunos.services.laudo._pedir_laudo_ao_gemini",
+        fake_pedir_laudo,
+    )
+
+    # 1. Sem confirmação explícita -> 409 Conflict sem salvar perfil
+    resp = auth_client.post(
+        f"/api/alunos/{aluno.id}/laudo/",
+        {"arquivo": _laudo_pdf()},
+        format="multipart",
+    )
+
+    assert resp.status_code == 409
+    dados = resp.json()
+    assert dados["confirmacao_necessaria"] is True
+    assert "Mateus" not in json.dumps(dados, ensure_ascii=False)
+    assert not PerfilApoio.objects.filter(aluno=aluno).exists()
+
+    # 2. Reenvio com confirmar_nome=True -> 200 OK e perfil criado
+    resp_confirmado = auth_client.post(
+        f"/api/alunos/{aluno.id}/laudo/",
+        {"arquivo": _laudo_pdf(), "confirmar_nome": True},
+        format="multipart",
+    )
+
+    assert resp_confirmado.status_code == 200
+    dados_confirmados = resp_confirmado.json()
+    assert dados_confirmados["nome_conferiu"] is False
+    assert "Mateus" not in json.dumps(dados_confirmados, ensure_ascii=False)
+    assert PerfilApoio.objects.filter(aluno=aluno, ativo=True).exists()
+
+
+def test_laudo_documento_invalido_retorna_422_e_nao_altera_perfis(auth_client, user, monkeypatch):
+    _, _, aluno = _criar_cenario_laudo(user, nome_aluno="Lucas Oliveira")
+    perfil_existente = PerfilApoio.objects.create(
+        aluno=aluno,
+        necessidades=["Necessidade anterior"],
+        estrategias=["Estratégia anterior"],
+        observacoes="Obs anterior",
+        ativo=True,
+    )
+
+    def fake_pedir_laudo(arquivo_bytes, mime, api_key, modelo):
+        return json.dumps(
+            {
+                "documento_valido": False,
+                "tipo_documento": "boletim de urna",
+                "motivo": "O documento enviado é um boletim de urna eleitoral.",
             },
             ensure_ascii=False,
         )
@@ -221,10 +276,16 @@ def test_laudo_nome_conferiu_false_quando_documento_tem_outro_nome(auth_client, 
         format="multipart",
     )
 
-    assert resp.status_code == 200
+    assert resp.status_code == 422
     dados = resp.json()
-    assert dados["nome_conferiu"] is False
-    assert "Mateus" not in json.dumps(dados, ensure_ascii=False)
+    assert "não parece um laudo" in dados["erro"]
+    assert dados["tipo_documento"] == "boletim de urna"
+    assert dados["motivo"] == "O documento enviado é um boletim de urna eleitoral."
+
+    # Perfil anterior continua ativo e intacto, e nenhum novo perfil foi criado
+    perfil_existente.refresh_from_db()
+    assert perfil_existente.ativo is True
+    assert PerfilApoio.objects.filter(aluno=aluno).count() == 1
 
 
 def test_laudo_nao_salva_arquivo_em_disco(auth_client, user, monkeypatch, settings, tmp_path):

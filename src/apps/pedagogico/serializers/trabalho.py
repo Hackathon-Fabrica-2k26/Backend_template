@@ -77,3 +77,11 @@ class TrabalhoConfirmacaoSerializer(serializers.Serializer):
                 "Aluno sem consentimento ativo do responsável para uso de IA."
             )
         return aluno
+
+    def validate(self, attrs: dict) -> dict:
+        trabalho: Trabalho | None = self.context.get("trabalho")
+        if trabalho is not None and trabalho.status == Trabalho.StatusChoices.ERRO:
+            raise serializers.ValidationError(
+                {"trabalho": "Trabalhos com status de erro não podem ser confirmados."}
+            )
+        return attrs

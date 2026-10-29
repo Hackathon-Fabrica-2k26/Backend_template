@@ -221,3 +221,72 @@ def test_chamada_reconhecer_erro_da_ia_retorna_502(auth_client, db, user, monkey
     )
     assert response.status_code == 502
     assert "Não foi possível reconhecer os nomes" in response.json()["erro"]
+
+
+def test_chamada_reconhecer_documento_invalido_retorna_422_e_nao_cria_nada(
+    auth_client, db, user, monkeypatch
+):
+    user.escola = EscolaFactory()
+    user.save()
+
+    def fake_ocr(imagem_bytes, mime, api_key, modelo):
+        return (
+            '{"documento_valido": false, "tipo_documento": "boletim de urna", '
+            '"motivo": "O documento refere-se a um boletim de urna eleitoral.", '
+            '"nomes": []}'
+        )
+
+    monkeypatch.setattr("apps.escolas.services.chamada._pedir_ocr_ao_gemini", fake_ocr)
+
+    contagens_antes = (
+        Escola.objects.count(),
+        Turma.objects.count(),
+        Aluno.objects.count(),
+    )
+
+    response = auth_client.post(
+        RECONHECER_URL,
+        {"imagem": _imagem_valida()},
+        format="multipart",
+    )
+
+    assert response.status_code == 422
+    dados = response.json()
+    assert dados["erro"] == "Este arquivo não parece uma lista de chamada."
+    assert dados["tipo_documento"] == "boletim de urna"
+    assert "boletim de urna" in dados["motivo"]
+
+    contagens_depois = (
+        Escola.objects.count(),
+        Turma.objects.count(),
+        Aluno.objects.count(),
+    )
+    assert contagens_depois == contagens_antes
+
+
+def test_chamada_reconhecer_sem_nomes_com_confianca_minima_retorna_422(
+    auth_client, db, user, monkeypatch
+):
+    user.escola = EscolaFactory()
+    user.save()
+
+    def fake_ocr(imagem_bytes, mime, api_key, modelo):
+        return (
+            '{"documento_valido": true, "tipo_documento": "lista de chamada", '
+            '"motivo": "", "nomes": [{"nome": "Rascunho ilegível", "confianca": 0.2}]}'
+        )
+
+    monkeypatch.setattr("apps.escolas.services.chamada._pedir_ocr_ao_gemini", fake_ocr)
+
+    response = auth_client.post(
+        RECONHECER_URL,
+        {"imagem": _imagem_valida()},
+        format="multipart",
+    )
+
+    assert response.status_code == 422
+    dados = response.json()
+    assert dados["erro"] == "Este arquivo não parece uma lista de chamada."
+    assert dados["tipo_documento"] == "lista de chamada"
+    assert "confiança mínima" in dados["motivo"]
+

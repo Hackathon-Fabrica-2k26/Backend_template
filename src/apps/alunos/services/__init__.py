@@ -12,13 +12,15 @@ from .consentimento import (
     revogar_consentimento,
     tem_consentimento_ativo,
 )
-from .laudo import processar_laudo
+from .laudo import DocumentoRecusadoError, NomeNaoConfereError, processar_laudo
 
 __all__ = [
     "alunos_com_consentimento",
     "CodigoInvalido",
+    "DocumentoRecusadoError",
     "emitir_token",
     "gerar_codigo",
+    "NomeNaoConfereError",
     "processar_laudo",
     "revogar_codigos_ativos",
     "revogar_consentimento",
