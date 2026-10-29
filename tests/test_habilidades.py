@@ -175,6 +175,7 @@ def test_aluno_habilidades_regra_dois_trabalhos_e_ultimo_trabalho(auth_client):
     TrabalhoFactory(
         envio=envio,
         aluno=aluno,
+        identificacao=Trabalho.IdentificacaoChoices.CONFIRMADA,
         habilidades_a_reforcar=["LP-ALFABETO"],
         habilidades_demonstradas=["MA-CONT"],
         status=Trabalho.StatusChoices.ANALISADO,
@@ -183,6 +184,7 @@ def test_aluno_habilidades_regra_dois_trabalhos_e_ultimo_trabalho(auth_client):
     TrabalhoFactory(
         envio=envio,
         aluno=aluno,
+        identificacao=Trabalho.IdentificacaoChoices.CONFIRMADA,
         habilidades_a_reforcar=["LP-ALFABETO", "MA-CONT"],
         habilidades_demonstradas=[],
         status=Trabalho.StatusChoices.ANALISADO,
@@ -226,20 +228,46 @@ def test_turma_habilidades_resumo_sem_nomes_e_ignora_sem_consentimento(auth_clie
     auth_client.force_authenticate(user=prof)
 
     # Aluno 1: 2 trabalhos com LP-ALFABETO -> em_reforco=True
-    TrabalhoFactory(envio=envio, aluno=aluno1, habilidades_a_reforcar=["LP-ALFABETO"])
-    TrabalhoFactory(envio=envio, aluno=aluno1, habilidades_a_reforcar=["LP-ALFABETO"])
+    TrabalhoFactory(
+        envio=envio,
+        aluno=aluno1,
+        identificacao=Trabalho.IdentificacaoChoices.CONFIRMADA,
+        habilidades_a_reforcar=["LP-ALFABETO"],
+    )
+    TrabalhoFactory(
+        envio=envio,
+        aluno=aluno1,
+        identificacao=Trabalho.IdentificacaoChoices.CONFIRMADA,
+        habilidades_a_reforcar=["LP-ALFABETO"],
+    )
 
     # Aluno 2: 1 trabalho com LP-ALFABETO (não atinge 2), 2 com MA-NUM-ESCR -> em_reforco=True
     TrabalhoFactory(
         envio=envio,
         aluno=aluno2,
+        identificacao=Trabalho.IdentificacaoChoices.CONFIRMADA,
         habilidades_a_reforcar=["LP-ALFABETO", "MA-NUM-ESCR"],
     )
-    TrabalhoFactory(envio=envio, aluno=aluno2, habilidades_a_reforcar=["MA-NUM-ESCR"])
+    TrabalhoFactory(
+        envio=envio,
+        aluno=aluno2,
+        identificacao=Trabalho.IdentificacaoChoices.CONFIRMADA,
+        habilidades_a_reforcar=["MA-NUM-ESCR"],
+    )
 
     # Aluno 3 (sem consentimento): 3 trabalhos com LP-ALFABETO -> DEVE SER IGNORADO
-    TrabalhoFactory(envio=envio, aluno=aluno3, habilidades_a_reforcar=["LP-ALFABETO"])
-    TrabalhoFactory(envio=envio, aluno=aluno3, habilidades_a_reforcar=["LP-ALFABETO"])
+    TrabalhoFactory(
+        envio=envio,
+        aluno=aluno3,
+        identificacao=Trabalho.IdentificacaoChoices.CONFIRMADA,
+        habilidades_a_reforcar=["LP-ALFABETO"],
+    )
+    TrabalhoFactory(
+        envio=envio,
+        aluno=aluno3,
+        identificacao=Trabalho.IdentificacaoChoices.CONFIRMADA,
+        habilidades_a_reforcar=["LP-ALFABETO"],
+    )
 
     resp = auth_client.get(f"/api/turmas/{turma.id}/habilidades/")
     assert resp.status_code == status.HTTP_200_OK
