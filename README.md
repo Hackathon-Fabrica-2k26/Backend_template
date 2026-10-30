@@ -1,6 +1,18 @@
-# Backend
+# Marsupi: Backend
 
-API REST com Django + DRF, usuário customizado por e-mail, autenticação JWT, documentação Swagger, tarefas Celery e admin Unfold.
+API do **Marsupi**, copiloto pedagógico inclusivo para professores dos anos iniciais do Ensino Fundamental, criado no Hackathon Fábrica de Software 2026 (IFC Araquari), desafio *"Do Zero à Autonomia: 24H com IA"*.
+
+O professor cadastra turmas a partir da foto da chamada, envia atividades e trabalhos dos alunos e recebe da IA (Gemini) adaptações de atividade, relatórios, pontos de atenção e rascunho de PEI. O responsável acessa o perfil de apoio do aluno por um código de acesso.
+
+Stack: Django + DRF, JWT com OTP por e-mail, Celery, Swagger (drf-spectacular) e admin Unfold.
+
+## Apps (`src/apps/`)
+| App | Responsabilidade |
+|---|---|
+| `users` | professor (login por matrícula), JWT, OTP, logout |
+| `escolas` | escola, turma, `Config` (chave do Gemini, cifrada no banco), reconhecimento da chamada por foto |
+| `alunos` | aluno, responsável, consentimento, laudo, código de acesso do responsável, pontos de atenção, rascunho de PEI |
+| `pedagogico` | atividades e variações, trabalhos, relatórios, perfil de apoio, habilidades e evolução |
 
 ## Requisitos
 - Python 3.11+
@@ -104,18 +116,24 @@ Variáveis de ambiente opcionais (`.env`):
 - `SEED_USER_PASSWORD`: senha comum atribuída aos professores mockados (padrão: `senha123`).
 
 ## Endpoints
+A lista completa, com os corpos de requisição, fica no Swagger em `/api/docs/` (em produção exige login).
+
 | Rota | Descrição |
 |---|---|
-| `POST /api/auth/register/` | cria usuário (`email`, `name`, `password`) |
-| `POST /api/auth/login/` | `email` + `password`; retorna `access` e `refresh` |
-| `POST /api/auth/refresh/` | renova o `access` |
-| `GET /api/auth/me/` | usuário autenticado |
-| `/api/items/` | CRUD de exemplo (filtro `done`, busca `search`, ordenação `ordering`) |
-| `/api/docs/` | Swagger |
-| `/health/` | health check |
-| `/admin/` | painel administrativo |
+| `POST /api/auth/login/` | `matricula` + `password`; devolve `access`/`refresh` ou, com OTP, um `otp_token` |
+| `POST /api/auth/otp/verify/` · `otp/resend/` | confirma o código enviado por e-mail e devolve os tokens · reenvia o código |
+| `POST /api/auth/refresh/` · `logout/` | renova o `access` (com rotação do `refresh`) · invalida o `refresh` |
+| `GET /api/auth/me/` · `me/resumo/` | professor autenticado · resumo do painel inicial |
+| `/api/escolas/`, `/api/turmas/` | escolas e turmas do professor |
+| `POST /api/chamada/reconhecer/` | lê os nomes da foto da chamada |
+| `/api/alunos/` | alunos, laudo, pontos de atenção, rascunho de PEI (JSON e PDF) e código de acesso do responsável |
+| `/api/atividades/`, `/api/variacoes/` | atividades da turma e variações adaptadas pela IA (`atividades/extrair/` lê a atividade de uma foto) |
+| `/api/trabalhos/`, `/api/relatorios/` | trabalhos enviados e relatórios gerados (`relatorios/gerar/`) |
+| `/api/habilidades/`, `/api/perfis-apoio/` | habilidades BNCC e evolução · perfil de apoio do aluno |
+| `/api/responsavel/...` | área do responsável: acesso por código, aluno, consentimento, laudo e perfil de apoio |
+| `/health/` · `/admin/` | health check · painel administrativo |
 
-Envie o token como `Authorization: Bearer <access>`.
+Envie o token como `Authorization: Bearer <access>`. O `access` dura 30 minutos.
 
 ### Desativar o JWT em desenvolvimento
 Com `AUTH_DISABLED=True` no `.env` (e `DEBUG=True`), requisições sem token passam a ser o usuário `dev@example.com`, criado automaticamente. Um token válido continua tendo prioridade. Com `DEBUG=False` o app não inicia com essa opção ligada.
@@ -131,6 +149,8 @@ Nos testes automatizados, use a fixture `auth_client` (`force_authenticate`).
 | `CORS_ALLOWED_ORIGINS` | vazio | origens do front-end; vazio com `DEBUG=True` libera todas |
 | `CSRF_TRUSTED_ORIGINS` | vazio | origens HTTPS do admin atrás de proxy |
 | `AUTH_DISABLED` | `False` | desativa o JWT em desenvolvimento (exige `DEBUG=True`) |
+| `CONFIG_FERNET_KEY` | vazio | chave Fernet que cifra a chave do Gemini no banco; obrigatória com `DEBUG=False` e não pode ser trocada depois |
+| `SECURE_HSTS_SECONDS` | `31536000` | duração do HSTS em produção (`0` com `DEBUG=True`) |
 | `DATABASE_URL` | vazio (SQLite) | ex.: `postgres://user:senha@host:5432/banco` |
 | `REDIS_URL` | vazio (Celery síncrono) | broker do Celery, ex.: `redis://localhost:6379/0` |
 | `REDIS_PORT` | `6379` | porta do Redis no host (`docker-compose.yml`) |
@@ -147,7 +167,7 @@ Nos testes automatizados, use a fixture `auth_client` (`force_authenticate`).
 | `SEED_DEMO_API_KEY` | vazio | `api_key` demo da `Config` criada pelo `seed_demo`; mesmo comportamento da senha |
 
 ## Deploy
-O `Procfile` define `release`, `web` (gunicorn) e `worker` (Celery). Configure `SECRET_KEY` (antes do primeiro push), `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `DATABASE_URL` e `REDIS_URL` no ambiente.
+O `Procfile` define `release`, `web` (gunicorn) e `worker` (Celery). Configure `SECRET_KEY` e `CONFIG_FERNET_KEY` (antes do primeiro push), `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `DATABASE_URL` e `REDIS_URL` no ambiente.
 
 O cache (usado pelo OTP e pelo rate limit) é compartilhado entre os workers do gunicorn: usa o Redis quando `REDIS_URL` está definida ou, por padrão, o próprio banco de dados (`DatabaseCache` na tabela `django_cache`, criada automaticamente no passo `release` com `python src/manage.py createcachetable`).
 
