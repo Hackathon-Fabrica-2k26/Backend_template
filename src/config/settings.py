@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "simple_history",
     "safedelete",
+    "axes",
     *(["django_extensions"] if importlib.util.find_spec("django_extensions") else []),
     "core",
     "apps.users",
@@ -73,6 +74,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "axes.middleware.AxesMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
@@ -125,6 +127,20 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.User"
 
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# Proteção contra força bruta no admin com django-axes (bloqueio por IP+usuário após 5 erros)
+AXES_ONLY_ADMIN_SITE = True
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+AXES_IPWARE_META_PRECEDENCE_ORDER = ["HTTP_X_FORWARDED_FOR", "REMOTE_ADDR"]
+AXES_RESET_ON_SUCCESS = True
+AXES_VERBOSE = False
+
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
 
@@ -165,6 +181,15 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    "SERVE_PERMISSIONS": (
+        ["rest_framework.permissions.IsAuthenticated"]
+        if not DEBUG
+        else ["rest_framework.permissions.AllowAny"]
+    ),
+    "SERVE_AUTHENTICATION": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
 }
 
 REDIS_URL = os.getenv("REDIS_URL", "")
