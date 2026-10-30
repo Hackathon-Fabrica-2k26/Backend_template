@@ -2,6 +2,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
+from apps.escolas.admin.config import ConfigAdmin
 from apps.escolas.models import Config
 
 from .factories import ConfigFactory
@@ -64,3 +65,19 @@ def test_criar_config_pelo_admin_grava_a_chave(admin_client):
 
     assert resp.status_code == 302
     assert Config.objects.get(modelo="gemini").api_key == "chave-criada"
+
+
+def test_listagem_exibe_chave_configurada(admin_client):
+    config_com_chave = ConfigFactory(api_key="chave-123")
+    config_sem_chave = ConfigFactory(api_key="")
+    url = reverse("admin:escolas_config_changelist")
+
+    resp = admin_client.get(url)
+    assert resp.status_code == 200
+    conteudo = resp.content.decode()
+    assert "chave-123" not in conteudo
+    # A listagem renderiza os booleanos do display
+    admin_instance = ConfigAdmin(Config, admin_client)
+    assert admin_instance.chave_configurada(config_com_chave) is True
+    assert admin_instance.chave_configurada(config_sem_chave) is False
+
