@@ -9,7 +9,15 @@ def recarregar(monkeypatch, **env):
     import config.settings as cfg
 
     monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: None)
-    for chave in ("DEBUG", "SECRET_KEY", "DATABASE_URL", "REDIS_URL", "CSRF_TRUSTED_ORIGINS"):
+    for chave in (
+        "DEBUG",
+        "SECRET_KEY",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "CSRF_TRUSTED_ORIGINS",
+        "CORS_ALLOWED_ORIGINS",
+        "SECURE_HSTS_SECONDS",
+    ):
         monkeypatch.delenv(chave, raising=False)
     for chave, valor in env.items():
         monkeypatch.setenv(chave, valor)
@@ -105,3 +113,31 @@ def test_cache_usa_redis_quando_configurado(monkeypatch):
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": "redis://localhost:6379/0",
     }
+
+
+def test_cabecalhos_seguranca_em_producao(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False")
+    assert cfg.SESSION_COOKIE_SECURE is True
+    assert cfg.CSRF_COOKIE_SECURE is True
+    assert cfg.SECURE_HSTS_SECONDS == 31536000
+    assert cfg.SECURE_CONTENT_TYPE_NOSNIFF is True
+
+
+def test_cabecalhos_seguranca_em_desenvolvimento(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="True")
+    assert cfg.SESSION_COOKIE_SECURE is False
+    assert cfg.CSRF_COOKIE_SECURE is False
+    assert cfg.SECURE_HSTS_SECONDS == 0
+    assert cfg.SECURE_CONTENT_TYPE_NOSNIFF is False
+
+
+def test_cors_producao_sem_origins_desativa_allow_all(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False")
+    assert cfg.CORS_ALLOWED_ORIGINS == []
+    assert cfg.CORS_ALLOW_ALL_ORIGINS is False
+
+
+def test_cors_debug_sem_origins_ativa_allow_all(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="True")
+    assert cfg.CORS_ALLOWED_ORIGINS == []
+    assert cfg.CORS_ALLOW_ALL_ORIGINS is True
