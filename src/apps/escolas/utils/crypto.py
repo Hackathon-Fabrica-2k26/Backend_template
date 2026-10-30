@@ -1,9 +1,12 @@
 import base64
 import hashlib
+import logging
 import os
 
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 def get_fernet_key() -> bytes:
@@ -58,4 +61,6 @@ def decrypt_value(value: str) -> str:
     try:
         return get_fernet().decrypt(value.encode()).decode()
     except (InvalidToken, Exception):
+        if value.startswith("gAAAAA"):
+            logger.error("Config.api_key: falha ao decifrar (chave Fernet trocada?)")
         return value

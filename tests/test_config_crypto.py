@@ -121,3 +121,15 @@ def test_protecao_dupla_cifragem_e_validacoes():
     cifrado = encrypt_value(texto)
     cifrado_novamente = encrypt_value(cifrado)
     assert cifrado_novamente == cifrado
+
+
+def test_decrypt_value_falha_chave_trocada_loga_sem_expor_valor(caplog):
+    outra_chave = Fernet.generate_key()
+    token_invalido = Fernet(outra_chave).encrypt(b"segredo-que-nao-deve-aparecer").decode()
+
+    with caplog.at_level("ERROR"):
+        resultado = decrypt_value(token_invalido)
+
+    assert resultado == token_invalido
+    assert "Config.api_key: falha ao decifrar (chave Fernet trocada?)" in caplog.text
+    assert "segredo-que-nao-deve-aparecer" not in caplog.text
