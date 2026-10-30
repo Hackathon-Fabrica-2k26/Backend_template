@@ -18,8 +18,12 @@ def recarregar(monkeypatch, **env):
         "CONFIG_FERNET_KEY",
     ):
         monkeypatch.delenv(chave, raising=False)
-    for chave, valor in env.items():
-        monkeypatch.setenv(chave, valor)
+    env_com_padrao = {"CONFIG_FERNET_KEY": "chave-fernet-para-testes", **env}
+    for chave, valor in env_com_padrao.items():
+        if valor is None:
+            monkeypatch.delenv(chave, raising=False)
+        else:
+            monkeypatch.setenv(chave, str(valor))
     return importlib.reload(cfg)
 
 
@@ -52,7 +56,7 @@ def test_producao_sem_secret_key_falha(monkeypatch):
 
 def test_producao_sem_config_fernet_key_falha(monkeypatch):
     with pytest.raises(ImproperlyConfigured) as exc_info:
-        recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False")
+        recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False", CONFIG_FERNET_KEY="")
     assert "CONFIG_FERNET_KEY" in str(exc_info.value)
 
 
