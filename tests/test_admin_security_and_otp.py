@@ -49,6 +49,7 @@ def test_superuser_sem_otp_ativo_tem_otp_obrigatorio_no_login_api(api_client):
     dados = resp.json()
     assert dados["otp_required"] is True
     assert "otp_token" in dados
+    assert "access" not in dados
     assert len(mail.outbox) == 1
 
 
@@ -94,7 +95,7 @@ def test_admin_login_exige_otp_para_staff(client):
         {"username": staff.matricula, "password": "SenhaForte@123", "otp_code": "9999"},
     )
     assert resp_erro_otp.status_code == 200
-    assert "Código de verificação incorreto" in resp_erro_otp.content.decode()
+    assert "Código incorreto" in resp_erro_otp.content.decode()
 
     # 3. Extrai o código de 4 dígitos enviado no e-mail e conclui o login
     match = re.search(r"\b(\d{4})\b", mail.outbox[0].body)
@@ -132,21 +133,24 @@ def test_admin_login_bloqueia_apos_5_tentativas_com_axes(client):
 
 
 def test_docs_e_schema_em_producao_exigem_login(client, auth_client, settings):
-    settings.DEBUG = False
+    try:
+        settings.DEBUG = False
 
-    # Sem autenticação em produção: bloqueado (401 ou 403)
-    resp_docs = client.get("/api/docs/")
-    assert resp_docs.status_code in (401, 403)
+        # Sem autenticação em produção: bloqueado (401 ou 403)
+        resp_docs = client.get("/api/docs/")
+        assert resp_docs.status_code in (401, 403)
 
-    resp_schema = client.get("/api/schema/")
-    assert resp_schema.status_code in (401, 403)
+        resp_schema = client.get("/api/schema/")
+        assert resp_schema.status_code in (401, 403)
 
-    # Com autenticação: liberado (200)
-    resp_docs_auth = auth_client.get("/api/docs/")
-    assert resp_docs_auth.status_code == 200
+        # Com autenticação: liberado (200)
+        resp_docs_auth = auth_client.get("/api/docs/")
+        assert resp_docs_auth.status_code == 200
 
-    resp_schema_auth = auth_client.get("/api/schema/")
-    assert resp_schema_auth.status_code == 200
+        resp_schema_auth = auth_client.get("/api/schema/")
+        assert resp_schema_auth.status_code == 200
+    finally:
+        settings.DEBUG = True
 
 
 def test_docs_e_schema_em_desenvolvimento_sao_publicos(client, settings):
