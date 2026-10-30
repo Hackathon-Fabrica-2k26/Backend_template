@@ -59,8 +59,10 @@ def test_proxy_https_e_csrf_origins(monkeypatch):
 def test_tempo_de_vida_dos_tokens():
     from datetime import timedelta
 
-    assert settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] == timedelta(days=2)
+    assert settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] == timedelta(minutes=30)
     assert settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"] == timedelta(days=7)
+    assert settings.SIMPLE_JWT["ROTATE_REFRESH_TOKENS"] is True
+    assert settings.SIMPLE_JWT["BLACKLIST_AFTER_ROTATION"] is True
 
 
 def test_auth_desativada_exige_debug(monkeypatch):

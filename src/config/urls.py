@@ -61,6 +61,7 @@ def api_root(request, format=None):
             "habilidades": reverse("habilidades", request=request, format=format),
             "me": reverse("me", request=request, format=format),
             "login": reverse("login", request=request, format=format),
+            "logout": reverse("logout", request=request, format=format),
             "otp-verify": reverse("otp-verify", request=request, format=format),
             "otp-resend": reverse("otp-resend", request=request, format=format),
             "register": reverse("register", request=request, format=format),

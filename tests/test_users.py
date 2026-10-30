@@ -376,3 +376,68 @@ def test_professora_liga_e_desliga_otp_no_perfil(api_client, db):
     api_client.patch("/api/auth/me/", {"otp_ativo": False})
     professora.refresh_from_db()
     assert professora.otp_ativo is False
+
+
+@pytest.mark.django_db
+def test_jwt_rotacao_refresh_token_invalida_token_anterior(api_client):
+    from .factories import UserFactory
+
+    professora = UserFactory()
+    resp_login = api_client.post(
+        "/api/auth/login/", {"matricula": professora.matricula, "password": SENHA}
+    )
+    assert resp_login.status_code == 200
+    dados = resp_login.json()
+    refresh_antigo = dados["refresh"]
+
+    # 1. Renovação com refresh antigo devolve novo access e novo refresh
+    resp_refresh = api_client.post("/api/auth/refresh/", {"refresh": refresh_antigo})
+    assert resp_refresh.status_code == 200
+    dados_novos = resp_refresh.json()
+    assert "access" in dados_novos
+    assert "refresh" in dados_novos
+    refresh_novo = dados_novos["refresh"]
+    assert refresh_novo != refresh_antigo
+
+    # 2. Tentar reutilizar o refresh antigo após rotação dá 401
+    resp_reuso = api_client.post("/api/auth/refresh/", {"refresh": refresh_antigo})
+    assert resp_reuso.status_code == 401
+
+    # 3. O refresh novo continua válido
+    resp_refresh_ok = api_client.post("/api/auth/refresh/", {"refresh": refresh_novo})
+    assert resp_refresh_ok.status_code == 200
+
+
+@pytest.mark.django_db
+def test_jwt_logout_invalida_refresh_token(api_client):
+    from .factories import UserFactory
+
+    professora = UserFactory()
+    resp_login = api_client.post(
+        "/api/auth/login/", {"matricula": professora.matricula, "password": SENHA}
+    )
+    assert resp_login.status_code == 200
+    refresh = resp_login.json()["refresh"]
+
+    # 1. Logout coloca o refresh na blacklist
+    resp_logout = api_client.post("/api/auth/logout/", {"refresh": refresh})
+    assert resp_logout.status_code == 200
+    assert "mensagem" in resp_logout.json()
+
+    # 2. Depois do logout, tentar usar o refresh para renovar dá 401
+    resp_refresh = api_client.post("/api/auth/refresh/", {"refresh": refresh})
+    assert resp_refresh.status_code == 401
+
+
+@pytest.mark.django_db
+def test_jwt_logout_com_refresh_invalido_ou_faltando(api_client):
+    # Sem o campo refresh
+    resp_vazio = api_client.post("/api/auth/logout/", {})
+    assert resp_vazio.status_code == 400
+    assert "erro" in resp_vazio.json()
+
+    # Com token malformado
+    resp_invalido = api_client.post("/api/auth/logout/", {"refresh": "token.invalido.123"})
+    assert resp_invalido.status_code == 400
+    assert "erro" in resp_invalido.json()
+
