@@ -7,7 +7,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
+from apps.users.admin import AdminOTPAuthenticationForm
 from core.views import health
+
+admin.site.login_form = AdminOTPAuthenticationForm
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
