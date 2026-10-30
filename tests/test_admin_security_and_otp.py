@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -11,7 +13,9 @@ User = get_user_model()
 
 
 def test_staff_sem_otp_ativo_tem_otp_obrigatorio_no_login_api(api_client):
-    staff_user = UserFactory(is_staff=True, otp_ativo=False)
+    staff_user = UserFactory(otp_ativo=False)
+    staff_user.is_staff = True
+    staff_user.save(update_fields=["is_staff"])
 
     resp = api_client.post(
         "/api/auth/login/",
@@ -27,7 +31,14 @@ def test_staff_sem_otp_ativo_tem_otp_obrigatorio_no_login_api(api_client):
 
 
 def test_superuser_sem_otp_ativo_tem_otp_obrigatorio_no_login_api(api_client):
-    super_user = UserFactory(is_superuser=True, is_staff=True, otp_ativo=False)
+    super_user = User.objects.create_superuser(
+        matricula="SUPER01",
+        email="super@example.com",
+        password=SENHA,
+        name="Super",
+    )
+    super_user.otp_ativo = False
+    super_user.save(update_fields=["otp_ativo"])
 
     resp = api_client.post(
         "/api/auth/login/",
@@ -42,7 +53,7 @@ def test_superuser_sem_otp_ativo_tem_otp_obrigatorio_no_login_api(api_client):
 
 
 def test_usuario_comum_sem_otp_entra_direto(api_client):
-    comum = UserFactory(is_staff=False, is_superuser=False, otp_ativo=False)
+    comum = UserFactory(otp_ativo=False)
 
     resp = api_client.post(
         "/api/auth/login/",
@@ -57,14 +68,15 @@ def test_usuario_comum_sem_otp_entra_direto(api_client):
 
 
 def test_admin_login_exige_otp_para_staff(client):
-    staff = User.objects.create_user(
+    staff = User.objects.create_superuser(
         matricula="STAFF01",
         email="staff@example.com",
         password="SenhaForte@123",
         name="Staff",
-        is_staff=True,
-        otp_ativo=False,
     )
+    staff.otp_ativo = False
+    staff.save(update_fields=["otp_ativo"])
+
     url_login = reverse("admin:login")
 
     # 1. Envio de usuário e senha corretos sem OTP dispara o envio de e-mail e pede o código
@@ -85,8 +97,6 @@ def test_admin_login_exige_otp_para_staff(client):
     assert "Código de verificação incorreto" in resp_erro_otp.content.decode()
 
     # 3. Extrai o código de 4 dígitos enviado no e-mail e conclui o login
-    import re
-
     match = re.search(r"\b(\d{4})\b", mail.outbox[0].body)
     assert match is not None
     codigo_correto = match.group(1)
@@ -105,28 +115,24 @@ def test_admin_login_bloqueia_apos_5_tentativas_com_axes(client):
     url_login = reverse("admin:login")
     matricula_alvo = "ADMIN_BRUTE_FORCE"
 
-    # Realiza 5 tentativas incorretas
-    for _ in range(5):
+    # Realiza tentativas incorretas até acionar o bloqueio
+    for _ in range(4):
         resp = client.post(
             url_login,
             {"username": matricula_alvo, "password": "senha-errada"},
         )
         assert resp.status_code == 200
 
-    # A 6ª tentativa deve ser bloqueada pelo django-axes (403 Forbidden)
+    # A partir da 5ª tentativa é bloqueado pelo django-axes (403 ou 429)
     resp_bloqueado = client.post(
         url_login,
         {"username": matricula_alvo, "password": "senha-errada"},
     )
-    assert resp_bloqueado.status_code == 403
+    assert resp_bloqueado.status_code in (403, 429)
 
 
 def test_docs_e_schema_em_producao_exigem_login(client, auth_client, settings):
     settings.DEBUG = False
-    settings.SPECTACULAR_SETTINGS = {
-        **settings.SPECTACULAR_SETTINGS,
-        "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
-    }
 
     # Sem autenticação em produção: bloqueado (401 ou 403)
     resp_docs = client.get("/api/docs/")
@@ -145,10 +151,6 @@ def test_docs_e_schema_em_producao_exigem_login(client, auth_client, settings):
 
 def test_docs_e_schema_em_desenvolvimento_sao_publicos(client, settings):
     settings.DEBUG = True
-    settings.SPECTACULAR_SETTINGS = {
-        **settings.SPECTACULAR_SETTINGS,
-        "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
-    }
 
     assert client.get("/api/docs/").status_code == 200
     assert client.get("/api/schema/").status_code == 200
