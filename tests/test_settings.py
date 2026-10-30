@@ -16,6 +16,8 @@ def recarregar(monkeypatch, **env):
         "REDIS_URL",
         "CSRF_TRUSTED_ORIGINS",
         "CONFIG_FERNET_KEY",
+        "CORS_ALLOWED_ORIGINS",
+        "SECURE_HSTS_SECONDS",
     ):
         monkeypatch.delenv(chave, raising=False)
     env_com_padrao = {"CONFIG_FERNET_KEY": "chave-fernet-para-testes", **env}
@@ -79,8 +81,10 @@ def test_proxy_https_e_csrf_origins(monkeypatch):
 def test_tempo_de_vida_dos_tokens():
     from datetime import timedelta
 
-    assert settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] == timedelta(days=2)
+    assert settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] == timedelta(minutes=30)
     assert settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"] == timedelta(days=7)
+    assert settings.SIMPLE_JWT["ROTATE_REFRESH_TOKENS"] is True
+    assert settings.SIMPLE_JWT["BLACKLIST_AFTER_ROTATION"] is True
 
 
 def test_auth_desativada_exige_debug(monkeypatch):
@@ -123,3 +127,31 @@ def test_cache_usa_redis_quando_configurado(monkeypatch):
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": "redis://localhost:6379/0",
     }
+
+
+def test_cabecalhos_seguranca_em_producao(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False")
+    assert cfg.SESSION_COOKIE_SECURE is True
+    assert cfg.CSRF_COOKIE_SECURE is True
+    assert cfg.SECURE_HSTS_SECONDS == 31536000
+    assert cfg.SECURE_CONTENT_TYPE_NOSNIFF is True
+
+
+def test_cabecalhos_seguranca_em_desenvolvimento(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="True")
+    assert cfg.SESSION_COOKIE_SECURE is False
+    assert cfg.CSRF_COOKIE_SECURE is False
+    assert cfg.SECURE_HSTS_SECONDS == 0
+    assert cfg.SECURE_CONTENT_TYPE_NOSNIFF is False
+
+
+def test_cors_producao_sem_origins_desativa_allow_all(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False")
+    assert cfg.CORS_ALLOWED_ORIGINS == []
+    assert cfg.CORS_ALLOW_ALL_ORIGINS is False
+
+
+def test_cors_debug_sem_origins_ativa_allow_all(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="True")
+    assert cfg.CORS_ALLOWED_ORIGINS == []
+    assert cfg.CORS_ALLOW_ALL_ORIGINS is True

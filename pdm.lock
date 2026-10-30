@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:92888cc57ce9f3c42aaa4ac8133227bf80253c9bd90380ee44f76707a28983e2"
+content_hash = "sha256:e1e9da32ef0331e0b5b884801c6f827010e28d37911c9b80caebb8c9be4e2098"
 
 [[metadata.targets]]
 requires_python = ">=3.11"
@@ -820,6 +820,37 @@ files = [
 ]
 
 [[package]]
+name = "django-axes"
+version = "8.3.1"
+requires_python = ">=3.10"
+summary = "Keep track of failed login attempts in Django-powered sites."
+groups = ["default"]
+dependencies = [
+    "asgiref>=3.6.0",
+    "django>=4.2",
+]
+files = [
+    {file = "django_axes-8.3.1-py3-none-any.whl", hash = "sha256:f7887582fd12713064f1602091ff6152752becae5e891a15bf802746cab0f51a"},
+    {file = "django_axes-8.3.1.tar.gz", hash = "sha256:d57e923c0ba33cf45275253dd1313c3a3ff04bec686b38d677beb2b3d43c7bcd"},
+]
+
+[[package]]
+name = "django-axes"
+version = "8.3.1"
+extras = ["ipware"]
+requires_python = ">=3.10"
+summary = "Keep track of failed login attempts in Django-powered sites."
+groups = ["default"]
+dependencies = [
+    "django-axes==8.3.1",
+    "django-ipware>=3",
+]
+files = [
+    {file = "django_axes-8.3.1-py3-none-any.whl", hash = "sha256:f7887582fd12713064f1602091ff6152752becae5e891a15bf802746cab0f51a"},
+    {file = "django_axes-8.3.1.tar.gz", hash = "sha256:d57e923c0ba33cf45275253dd1313c3a3ff04bec686b38d677beb2b3d43c7bcd"},
+]
+
+[[package]]
 name = "django-cors-headers"
 version = "4.9.0"
 requires_python = ">=3.9"
@@ -860,6 +891,21 @@ dependencies = [
 files = [
     {file = "django_filter-26.2-py3-none-any.whl", hash = "sha256:df8f737841d6359df00b84dda9b5ab59067fe60292091f1bdae1e3e6281cedb0"},
     {file = "django_filter-26.2.tar.gz", hash = "sha256:fd5cc83995fbe9f5f07fb5dcda16fde0f04de1ecf8ef82628b6c0ec921b751af"},
+]
+
+[[package]]
+name = "django-ipware"
+version = "8.0.0"
+requires_python = ">=3.10"
+summary = "A Django application to retrieve a client's real IP address."
+groups = ["default"]
+dependencies = [
+    "django>=5.2",
+    "python-ipware<5,>=4.1.0",
+]
+files = [
+    {file = "django_ipware-8.0.0-py3-none-any.whl", hash = "sha256:63e9e589aa58c37fbcd3f7624d18a08e69d95b03c84bab7e5ad2a12b03f8c4ec"},
+    {file = "django_ipware-8.0.0.tar.gz", hash = "sha256:377cc7926ea377d8f544511b019cd32b28060e1c9caa3d0c43c3e5e923560f33"},
 ]
 
 [[package]]
@@ -1848,6 +1894,17 @@ groups = ["default", "dev"]
 files = [
     {file = "python_dotenv-1.2.4-py3-none-any.whl", hash = "sha256:42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc"},
     {file = "python_dotenv-1.2.4.tar.gz", hash = "sha256:f0d53e69935a851c0dcc78f3ab7aaccd8cabef0b92382b576b824212902873c0"},
+]
+
+[[package]]
+name = "python-ipware"
+version = "4.1.1"
+requires_python = ">=3.9"
+summary = "A Python package to retrieve a client's real IP address."
+groups = ["default"]
+files = [
+    {file = "python_ipware-4.1.1-py3-none-any.whl", hash = "sha256:52eedd4cb7bb9e1bb6b9dd92db974e729fe54be22e1389703e21c60344b9f039"},
+    {file = "python_ipware-4.1.1.tar.gz", hash = "sha256:fd6102058e74c29112b4376f8abbae718852c95f8de6965801de88ca9780d22f"},
 ]
 
 [[package]]

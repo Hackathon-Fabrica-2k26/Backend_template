@@ -7,7 +7,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
+from apps.users.admin import AdminOTPAuthenticationForm
 from core.views import health
+
+admin.site.login_form = AdminOTPAuthenticationForm
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
@@ -61,6 +64,7 @@ def api_root(request, format=None):
             "habilidades": reverse("habilidades", request=request, format=format),
             "me": reverse("me", request=request, format=format),
             "login": reverse("login", request=request, format=format),
+            "logout": reverse("logout", request=request, format=format),
             "otp-verify": reverse("otp-verify", request=request, format=format),
             "otp-resend": reverse("otp-resend", request=request, format=format),
             "register": reverse("register", request=request, format=format),
