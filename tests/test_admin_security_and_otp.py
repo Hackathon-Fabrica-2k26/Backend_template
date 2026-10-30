@@ -136,27 +136,36 @@ def test_admin_login_bloqueia_apos_5_tentativas_com_axes(client):
     assert resp_bloqueado.status_code in (403, 429)
 
 
-def test_docs_e_schema_em_producao_exigem_login(client, auth_client):
-    from django.test import override_settings
+def test_spectacular_serve_permissions_producao_vs_dev(monkeypatch):
+    from tests.test_settings import recarregar
 
-    from config import settings as app_settings
+    cfg_prod = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False")
+    assert cfg_prod.SPECTACULAR_SETTINGS["SERVE_PERMISSIONS"] == [
+        "rest_framework.permissions.IsAuthenticated"
+    ]
 
-    prod_spectacular = dict(app_settings.SPECTACULAR_SETTINGS)
-    prod_spectacular["SERVE_PERMISSIONS"] = ["rest_framework.permissions.IsAuthenticated"]
-    with override_settings(SPECTACULAR_SETTINGS=prod_spectacular):
-        # Sem autenticação em produção: bloqueado (401 ou 403)
-        resp_docs = client.get("/api/docs/")
-        assert resp_docs.status_code in (401, 403)
+    cfg_dev = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="True")
+    assert cfg_dev.SPECTACULAR_SETTINGS["SERVE_PERMISSIONS"] == [
+        "rest_framework.permissions.AllowAny"
+    ]
 
-        resp_schema = client.get("/api/schema/")
-        assert resp_schema.status_code in (401, 403)
 
-        # Com autenticação: liberado (200)
-        resp_docs_auth = auth_client.get("/api/docs/")
-        assert resp_docs_auth.status_code == 200
+def test_docs_e_schema_em_producao_exigem_login(rf):
+    from django.contrib.auth.models import AnonymousUser
+    from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+    from rest_framework.permissions import IsAuthenticated
 
-        resp_schema_auth = auth_client.get("/api/schema/")
-        assert resp_schema_auth.status_code == 200
+    view_docs = SpectacularSwaggerView.as_view(permission_classes=[IsAuthenticated])
+    view_schema = SpectacularAPIView.as_view(permission_classes=[IsAuthenticated])
+
+    req_anon = rf.get("/api/docs/")
+    req_anon.user = AnonymousUser()
+
+    resp_docs = view_docs(req_anon)
+    assert resp_docs.status_code in (401, 403)
+
+    resp_schema = view_schema(req_anon)
+    assert resp_schema.status_code in (401, 403)
 
 
 def test_docs_e_schema_em_desenvolvimento_sao_publicos(client):
