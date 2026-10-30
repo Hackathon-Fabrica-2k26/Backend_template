@@ -168,7 +168,11 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
-    "SERVE_PERMISSIONS": ["core.permissions.SpectacularDocsPermission"],
+    "SERVE_PERMISSIONS": (
+        ["rest_framework.permissions.IsAuthenticated"]
+        if not DEBUG
+        else ["rest_framework.permissions.AllowAny"]
+    ),
     "SERVE_AUTHENTICATION": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",

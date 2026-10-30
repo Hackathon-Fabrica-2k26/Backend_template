@@ -105,11 +105,15 @@ def test_admin_login_exige_otp_para_staff(client):
     resp_sucesso = client.post(
         url_login,
         {"username": staff.matricula, "password": "SenhaForte@123", "otp_code": codigo_correto},
-        follow=True,
     )
-    assert resp_sucesso.status_code == 200
-    assert resp_sucesso.context["user"].is_authenticated
-    assert resp_sucesso.context["user"].pk == staff.pk
+    assert resp_sucesso.status_code == 302
+    assert client.session["_auth_user_id"] == str(staff.pk)
+
+    # Verifica que usuário logado acessa a home do admin
+    resp_admin = client.get(reverse("admin:index"))
+    assert resp_admin.status_code == 200
+    assert resp_admin.context["user"].is_authenticated
+    assert resp_admin.context["user"].pk == staff.pk
 
 
 def test_admin_login_bloqueia_apos_5_tentativas_com_axes(client):
@@ -132,10 +136,14 @@ def test_admin_login_bloqueia_apos_5_tentativas_com_axes(client):
     assert resp_bloqueado.status_code in (403, 429)
 
 
-def test_docs_e_schema_em_producao_exigem_login(client, auth_client, settings):
-    try:
-        settings.DEBUG = False
+def test_docs_e_schema_em_producao_exigem_login(client, auth_client):
+    from django.test import override_settings
 
+    from config import settings as app_settings
+
+    prod_spectacular = dict(app_settings.SPECTACULAR_SETTINGS)
+    prod_spectacular["SERVE_PERMISSIONS"] = ["rest_framework.permissions.IsAuthenticated"]
+    with override_settings(SPECTACULAR_SETTINGS=prod_spectacular):
         # Sem autenticação em produção: bloqueado (401 ou 403)
         resp_docs = client.get("/api/docs/")
         assert resp_docs.status_code in (401, 403)
@@ -149,12 +157,8 @@ def test_docs_e_schema_em_producao_exigem_login(client, auth_client, settings):
 
         resp_schema_auth = auth_client.get("/api/schema/")
         assert resp_schema_auth.status_code == 200
-    finally:
-        settings.DEBUG = True
 
 
-def test_docs_e_schema_em_desenvolvimento_sao_publicos(client, settings):
-    settings.DEBUG = True
-
+def test_docs_e_schema_em_desenvolvimento_sao_publicos(client):
     assert client.get("/api/docs/").status_code == 200
     assert client.get("/api/schema/").status_code == 200
