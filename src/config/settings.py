@@ -122,9 +122,11 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Proteção contra força bruta no admin com django-axes (bloqueio por IP+usuário após 5 erros)
+AXES_ONLY_ADMIN_SITE = True
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = timedelta(minutes=15)
 AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+AXES_IPWARE_META_PRECEDENCE_ORDER = ["HTTP_X_FORWARDED_FOR", "REMOTE_ADDR"]
 AXES_RESET_ON_SUCCESS = True
 AXES_VERBOSE = False
 

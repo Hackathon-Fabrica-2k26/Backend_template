@@ -117,23 +117,29 @@ def test_admin_login_exige_otp_para_staff(client):
 
 
 def test_admin_login_bloqueia_apos_5_tentativas_com_axes(client):
-    url_login = reverse("admin:login")
-    matricula_alvo = "ADMIN_BRUTE_FORCE"
+    from axes.utils import reset
 
-    # Realiza tentativas incorretas até acionar o bloqueio
-    for _ in range(4):
-        resp = client.post(
+    reset()
+    try:
+        url_login = reverse("admin:login")
+        matricula_alvo = "ADMIN_BRUTE_FORCE"
+
+        # Realiza tentativas incorretas até acionar o bloqueio
+        for _ in range(4):
+            resp = client.post(
+                url_login,
+                {"username": matricula_alvo, "password": "senha-errada"},
+            )
+            assert resp.status_code == 200
+
+        # A partir da 5ª tentativa é bloqueado pelo django-axes (403 ou 429)
+        resp_bloqueado = client.post(
             url_login,
             {"username": matricula_alvo, "password": "senha-errada"},
         )
-        assert resp.status_code == 200
-
-    # A partir da 5ª tentativa é bloqueado pelo django-axes (403 ou 429)
-    resp_bloqueado = client.post(
-        url_login,
-        {"username": matricula_alvo, "password": "senha-errada"},
-    )
-    assert resp_bloqueado.status_code in (403, 429)
+        assert resp_bloqueado.status_code in (403, 429)
+    finally:
+        reset()
 
 
 def test_spectacular_serve_permissions_producao_vs_dev(monkeypatch):
