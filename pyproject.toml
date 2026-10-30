@@ -24,6 +24,7 @@ dependencies = [
     "reportlab>=5.1.0",
     "pypdf>=6.21.2",
     "python-docx>=1.2.0",
+    "cryptography>=43.0.0",
     "django-axes[ipware]>=7.0.0",
 ]
 
