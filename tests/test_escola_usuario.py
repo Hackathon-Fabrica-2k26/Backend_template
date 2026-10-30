@@ -5,7 +5,7 @@ import io
 import pytest
 from PIL import Image
 
-from apps.escolas.models import Escola, Turma
+from apps.escolas.models import Config, Escola, Turma
 from apps.escolas.services.escola_usuario import config_ia_do_usuario, escola_do_usuario
 
 from .factories import ConfigFactory, EscolaFactory, TurmaFactory, UserFactory
@@ -53,6 +53,19 @@ def test_escola_sem_config_usa_a_unica_config_com_chave():
     assert config_ia_do_usuario(professor) == config
     escola.refresh_from_db()
     assert escola.config == config
+
+
+def test_config_ia_do_usuario_retorna_chave_decifrada():
+    professor = UserFactory()
+    criado = Config.objects.create(
+        modelo="gemini-3.8-flash",
+        api_key="chave-super-secreta-decifrada",
+    )
+    cfg = config_ia_do_usuario(professor)
+    assert cfg is not None
+    assert cfg == criado
+    assert cfg.api_key == "chave-super-secreta-decifrada"
+
 
 
 def test_chamada_funciona_para_professor_sem_escola(auth_client, user, monkeypatch):

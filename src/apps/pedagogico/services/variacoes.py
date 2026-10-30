@@ -28,12 +28,15 @@ from apps.pedagogico.models import (
 )
 
 from .anonimizar import anonimizar
-from .habilidades import CODIGOS_HABILIDADES, HABILIDADES, NOMES_HABILIDADES
+from .habilidades import (
+    CODIGOS_HABILIDADES,
+    HABILIDADES,
+    MIN_TRABALHOS_HABILIDADE,
+    NOMES_HABILIDADES,
+)
 from .llm import MODELO_PADRAO, LLMError, _extrair_json, _pedir_ao_gemini
 
 MAX_GRUPOS_ADAPTADOS = 4
-# Uma habilidade só agrupa o aluno quando aparece em pelo menos 2 trabalhos dele.
-MIN_TRABALHOS_HABILIDADE = 2
 
 PROMPT_VARIACAO_ATIVIDADE = (
     "Você é um assistente pedagógico especialista em educação inclusiva.\n"
@@ -143,8 +146,17 @@ def _como_lista(valor) -> list:
 def habilidade_principal_por_aluno(alunos: list[Aluno]) -> dict[int, str]:
     """Habilidade a reforçar mais frequente nos trabalhos de cada aluno (mínimo de 2)."""
     contagem: dict[int, dict[str, int]] = {}
-    trabalhos = Trabalho.objects.filter(aluno__in=alunos, deleted__isnull=True).values_list(
-        "aluno_id", "habilidades_a_reforcar"
+    trabalhos = (
+        Trabalho.objects.filter(
+            aluno__in=alunos,
+            deleted__isnull=True,
+            identificacao__in=[
+                Trabalho.IdentificacaoChoices.CONFIRMADA,
+                Trabalho.IdentificacaoChoices.AUTOMATICA,
+            ],
+        )
+        .exclude(status=Trabalho.StatusChoices.ERRO)
+        .values_list("aluno_id", "habilidades_a_reforcar")
     )
     for aluno_id, codigos in trabalhos:
         for codigo in set(codigos or []):

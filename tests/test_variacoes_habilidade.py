@@ -4,7 +4,7 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 
-from apps.pedagogico.models import AtividadeVariacao
+from apps.pedagogico.models import AtividadeVariacao, Trabalho
 from apps.pedagogico.services import agrupar_perfis_apoio
 from apps.pedagogico.services.variacoes import habilidade_principal_por_aluno
 
@@ -23,7 +23,10 @@ pytestmark = pytest.mark.django_db
 def _trabalhos(aluno, atividade, *listas):
     for codigos in listas:
         TrabalhoFactory(
-            envio__atividade=atividade, aluno=aluno, habilidades_a_reforcar=list(codigos)
+            envio__atividade=atividade,
+            aluno=aluno,
+            identificacao=Trabalho.IdentificacaoChoices.CONFIRMADA,
+            habilidades_a_reforcar=list(codigos),
         )
 
 

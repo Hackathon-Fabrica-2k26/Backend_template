@@ -26,9 +26,25 @@ if not SECRET_KEY:
             "Defina SECRET_KEY no ambiente (em desenvolvimento: copie .env.example para .env)."
         )
     SECRET_KEY = "dev-insecure-key-nao-use-em-producao"
+CONFIG_FERNET_KEY = os.getenv("CONFIG_FERNET_KEY", "")
+if not CONFIG_FERNET_KEY and not DEBUG:
+    raise ImproperlyConfigured(
+        "Defina CONFIG_FERNET_KEY no ambiente para cifrar Config.api_key em produção."
+    )
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+else:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_CONTENT_TYPE_NOSNIFF = False
 
 INSTALLED_APPS = [
     "unfold",
@@ -39,11 +55,13 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "django_filters",
     "corsheaders",
     "drf_spectacular",
     "simple_history",
     "safedelete",
+    "axes",
     *(["django_extensions"] if importlib.util.find_spec("django_extensions") else []),
     "core",
     "apps.users",
@@ -61,6 +79,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "axes.middleware.AxesMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
@@ -113,6 +132,20 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.User"
 
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# Proteção contra força bruta no admin com django-axes (bloqueio por IP+usuário após 5 erros)
+AXES_ONLY_ADMIN_SITE = True
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+AXES_IPWARE_META_PRECEDENCE_ORDER = ["HTTP_X_FORWARDED_FOR", "REMOTE_ADDR"]
+AXES_RESET_ON_SUCCESS = True
+AXES_VERBOSE = False
+
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
 
@@ -141,8 +174,10 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=2),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -151,6 +186,15 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    "SERVE_PERMISSIONS": (
+        ["rest_framework.permissions.IsAuthenticated"]
+        if not DEBUG
+        else ["rest_framework.permissions.AllowAny"]
+    ),
+    "SERVE_AUTHENTICATION": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
 }
 
 REDIS_URL = os.getenv("REDIS_URL", "")

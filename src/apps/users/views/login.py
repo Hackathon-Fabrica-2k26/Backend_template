@@ -67,8 +67,10 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # Sem verificação em duas etapas (padrão): entra direto com os tokens.
-        if not user.otp_ativo:
+        # Contas comuns sem verificação em duas etapas entram direto com os tokens.
+        # Contas is_staff ou is_superuser têm OTP obrigatório (ignora otp_ativo=False).
+        requer_otp = user.otp_ativo or user.is_staff or user.is_superuser
+        if not requer_otp:
             refresh = RefreshToken.for_user(user)
             return Response(
                 {

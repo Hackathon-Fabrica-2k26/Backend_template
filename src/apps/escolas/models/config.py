@@ -2,9 +2,11 @@ from django.db import models
 
 from core.models import BaseModel
 
+from ..fields import EncryptedCharField
+
 
 class Config(BaseModel):
-    api_key = models.CharField(max_length=255)
+    api_key = EncryptedCharField(max_length=512)
     modelo = models.CharField(max_length=45)
     campos_form = models.JSONField(default=dict)
 

@@ -9,10 +9,23 @@ def recarregar(monkeypatch, **env):
     import config.settings as cfg
 
     monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: None)
-    for chave in ("DEBUG", "SECRET_KEY", "DATABASE_URL", "REDIS_URL", "CSRF_TRUSTED_ORIGINS"):
+    for chave in (
+        "DEBUG",
+        "SECRET_KEY",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "CSRF_TRUSTED_ORIGINS",
+        "CONFIG_FERNET_KEY",
+        "CORS_ALLOWED_ORIGINS",
+        "SECURE_HSTS_SECONDS",
+    ):
         monkeypatch.delenv(chave, raising=False)
-    for chave, valor in env.items():
-        monkeypatch.setenv(chave, valor)
+    env_com_padrao = {"CONFIG_FERNET_KEY": "chave-fernet-para-testes", **env}
+    for chave, valor in env_com_padrao.items():
+        if valor is None:
+            monkeypatch.delenv(chave, raising=False)
+        else:
+            monkeypatch.setenv(chave, str(valor))
     return importlib.reload(cfg)
 
 
@@ -43,14 +56,23 @@ def test_producao_sem_secret_key_falha(monkeypatch):
         recarregar(monkeypatch, DEBUG="False")
 
 
+def test_producao_sem_config_fernet_key_falha(monkeypatch):
+    with pytest.raises(ImproperlyConfigured) as exc_info:
+        recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False", CONFIG_FERNET_KEY="")
+    assert "CONFIG_FERNET_KEY" in str(exc_info.value)
+
+
 def test_debug_padrao_e_falso(monkeypatch):
-    cfg = recarregar(monkeypatch, SECRET_KEY="x")
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", CONFIG_FERNET_KEY="chave-fernet")
     assert cfg.DEBUG is False
 
 
 def test_proxy_https_e_csrf_origins(monkeypatch):
     cfg = recarregar(
-        monkeypatch, SECRET_KEY="x", CSRF_TRUSTED_ORIGINS="https://app.exemplo.com,https://b.com"
+        monkeypatch,
+        SECRET_KEY="x",
+        CONFIG_FERNET_KEY="chave-fernet",
+        CSRF_TRUSTED_ORIGINS="https://app.exemplo.com,https://b.com",
     )
     assert cfg.SECURE_PROXY_SSL_HEADER == ("HTTP_X_FORWARDED_PROTO", "https")
     assert cfg.CSRF_TRUSTED_ORIGINS == ["https://app.exemplo.com", "https://b.com"]
@@ -59,8 +81,10 @@ def test_proxy_https_e_csrf_origins(monkeypatch):
 def test_tempo_de_vida_dos_tokens():
     from datetime import timedelta
 
-    assert settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] == timedelta(days=2)
+    assert settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"] == timedelta(minutes=30)
     assert settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"] == timedelta(days=7)
+    assert settings.SIMPLE_JWT["ROTATE_REFRESH_TOKENS"] is True
+    assert settings.SIMPLE_JWT["BLACKLIST_AFTER_ROTATION"] is True
 
 
 def test_auth_desativada_exige_debug(monkeypatch):
@@ -103,3 +127,31 @@ def test_cache_usa_redis_quando_configurado(monkeypatch):
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": "redis://localhost:6379/0",
     }
+
+
+def test_cabecalhos_seguranca_em_producao(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False")
+    assert cfg.SESSION_COOKIE_SECURE is True
+    assert cfg.CSRF_COOKIE_SECURE is True
+    assert cfg.SECURE_HSTS_SECONDS == 31536000
+    assert cfg.SECURE_CONTENT_TYPE_NOSNIFF is True
+
+
+def test_cabecalhos_seguranca_em_desenvolvimento(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="True")
+    assert cfg.SESSION_COOKIE_SECURE is False
+    assert cfg.CSRF_COOKIE_SECURE is False
+    assert cfg.SECURE_HSTS_SECONDS == 0
+    assert cfg.SECURE_CONTENT_TYPE_NOSNIFF is False
+
+
+def test_cors_producao_sem_origins_desativa_allow_all(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="False")
+    assert cfg.CORS_ALLOWED_ORIGINS == []
+    assert cfg.CORS_ALLOW_ALL_ORIGINS is False
+
+
+def test_cors_debug_sem_origins_ativa_allow_all(monkeypatch):
+    cfg = recarregar(monkeypatch, SECRET_KEY="x", DEBUG="True")
+    assert cfg.CORS_ALLOWED_ORIGINS == []
+    assert cfg.CORS_ALLOW_ALL_ORIGINS is True
