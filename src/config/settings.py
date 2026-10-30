@@ -26,6 +26,7 @@ if not SECRET_KEY:
             "Defina SECRET_KEY no ambiente (em desenvolvimento: copie .env.example para .env)."
         )
     SECRET_KEY = "dev-insecure-key-nao-use-em-producao"
+CONFIG_FERNET_KEY = os.getenv("CONFIG_FERNET_KEY", "")
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
